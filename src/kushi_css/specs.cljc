@@ -161,10 +161,7 @@
 
 ;; ## Specs for css-values -----------------------------------------------------
 
-(s/def ::css-value
-  (s/and 
-   ::s|kw|num
-   #(re-find css-value-re (as-str %))))
+(s/def ::css-value ::s|kw|num)
 
 
 
