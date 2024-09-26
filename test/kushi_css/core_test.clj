@@ -6,6 +6,7 @@
             [kushi-css.core :refer [css-block-data
                                     css-block
                                     css-rule
+                                    ?css
                                     css
                                     css-vars
                                     css-vars-map
@@ -13,6 +14,7 @@
             [kushi-css.specs :as specs]
             [clojure.spec.alpha :as s]
             [clojure.walk :as walk]))
+
 
 ;; (? (tag-map "hi"))
 ;; (println (s/conform ::specs/sx-args 
@@ -37,33 +39,43 @@
                                    :bgc :blue}])
 
 
-;; (s/explain ::specs/css-value "calc(10px / 2)")
+#_(s/explain ::specs/pseudo-element-and-string [:before:content "\"⌫\""])
 
 
-;; (css-block :.foo :c--red)
 
-;; (sx ["has-ancestor(nav[data-foo-bar-sidenav][aria-expanded=\"true\"])"
-    ;;  {:>.sidenav-menu-icon:d  :none
-    ;;   :>.sidenav-close-icon:d :inline-flex
-    ;;   :>ul:h                  "calc((100vh - (var(--navbar-height) * 2)) * 1)"
-    ;;   :h                      :fit-content
-    ;;   :o                      1}])
 
-(? (css-rule ".go" :c--blue))
+;; (? (css-block {"[data-foo-bar-sidenav][aria-expanded=\"true\"] &"
+;;                {:>.sidenav-menu-icon:d  :none
+;;                 :>.sidenav-close-icon:d :inline-flex
+;;                 :>ul:h                  "calc((100vh - (var(--navbar-height) * 2)) * 1)"
+;;                 :h                      :fit-content
+;;                 :o                      1} }))
+
+#_(? (css-rule ".go" :c--blue))
 #_(? (css-block
-     {"nav[data-foo-bar-sidenav][aria-expanded=\"true\"] &"
-      {:>.sidenav-menu-icon:d  :none
-       :>.sidenav-close-icon:d :inline-flex
-       :>ul:h                  "calc((100vh - (var(--navbar-height) * 2)) * 1)"
-       :o                      1}}
+    ;; :hover:c--blue
+    ;; :>a:hover:c--red
+    ;; :_a:hover:c--gold ; The "_" gets converted to " "
+    ;; :.bar:hover:c--pink
+    ;; :before:fw--bold
+    ;; :after:mie--5px
+    ;; {"~a:hover:c" :blue} ; Vector is used as "~" is not valid in a keyword
+    ;; {"nth-child(2):c" :red} ; Vector is used as "(" and ")" are not valid in keywords
+    [:before:content "\"⌫\""]
 
-     #_{:>p {:hover {:c   :blue
-                   :td  :underline
-                   :bgc :yellow
-                   :_a  {:c   :purple
-                         :td  :none
-                         :bgc :pink}
-                   }}}
+    #_{"nav[data-foo-bar-sidenav][aria-expanded=\"true\"] &"
+       {:>.sidenav-menu-icon:d  :none
+        :>.sidenav-close-icon:d :inline-flex
+        :>ul:h                  "calc((100vh - (var(--navbar-height) * 2)) * 1)"
+        :o                      1}}
+
+    #_{:>p {:hover {:c   :blue
+                    :td  :underline
+                    :bgc :yellow
+                    :_a  {:c   :purple
+                          :td  :none
+                          :bgc :pink}
+                    }}}
 
     ;; :hover:c--red
     ;; :active:c--red
@@ -145,7 +157,8 @@
 ;; (? #_:pp (css :.foo :p--10px :c--red))
 
 
-#_(do 
+;; Fix tests
+(do 
   ;; Figure out how to test these from a test namespace
   #_(deftest css-macro 
     (testing "tokenized keyword"
@@ -246,14 +259,54 @@
                            :mie :1rem})
                "{\n  color: red;\n  margin-inline-end: 1rem;\n}")))
 
+      
+      (testing "1 entry, with css calc"
+        (is (= (css-block {:w "calc((100vh - (var(--navbar-height) * (2 + (6 / 2)))) * 1)"})
+"{
+  width: calc((100vh - (var(--navbar-height) * (2 + (6 / 2)))) * 1);
+}")))
+
       (testing "with psdeudoclass ->"
         (testing "1 entry"
           (is (= (css-block {:last-child:c :red})
                  "{\n  &:last-child {\n    color: red;\n  }\n}")))
-        (testing "2 entry"
+        (testing "2 entries"
           (is (= (css-block {:last-child:c  :red
                              :first-child:c :blue})
                  "{\n  &:last-child {\n    color: red;\n  }\n  &:first-child {\n    color: blue;\n  }\n}")))
+        (testing "1 entry, nested"
+          (is (= (css-block {:last-child {:c   :red
+                                          :bgc :blue}})
+                 "{\n  &:last-child {\n    color: red;\n    background-color: blue;\n  }\n}")))
+        (testing "1 entries, grouped"
+          (is (= (css-block {:>p:c :red}
+                            {:>p:bgc :blue})
+                 "{
+  &>p {
+    color: red;
+    background-color: blue;
+  }
+}"))))
+
+      (testing "with psdeudoelement ->"
+        (testing "1 entry"
+          (is (= (css-block {:before:content "\"⌫\"" })
+"{
+  &::before {
+    content: \"⌫\";
+  }
+}")))
+        (testing "2 entries"
+          (is (= (css-block {:before:content "\"⌫\""
+                             :after:content "\"⌫\""})
+"{
+  &::before {
+    content: \"⌫\";
+  }
+  &::after {
+    content: \"⌫\";
+  }
+}")))
         (testing "1 entry, nested"
           (is (= (css-block {:last-child {:c   :red
                                           :bgc :blue}})
@@ -266,10 +319,52 @@
     color: red;
     background-color: blue;
   }
+}"))))
+      (testing "with compound data attribute selectors ->"
+        (testing "1 entry, with nesting"
+          (is (= (css-block {"[data-foo-bar-sidenav][aria-expanded=\"true\"]" 
+                             {:>.sidenav-menu-icon:d  :none
+                              :>.sidenav-close-icon:d :inline-flex
+                              :>ul:h                  "calc((100vh - (var(--navbar-height) * 2)) * 1)"
+                              :h                      :fit-content
+                              :o                      1} })
+"{
+  &[data-foo-bar-sidenav][aria-expanded=\"true\"] {
+    &>.sidenav-menu-icon {
+      display: none;
+    }
+    &>.sidenav-close-icon {
+      display: inline-flex;
+    }
+    &>ul {
+      height: calc((100vh - (var(--navbar-height) * 2)) * 1);
+    }
+    height: fit-content;
+    opacity: 1;
+  }
 }")))
-
-        ))
-
+        (testing "1 entry, with nesting, ancestor selector"
+          (is (= (css-block {"[data-foo-bar-sidenav][aria-expanded=\"true\"] &" 
+                             {:>.sidenav-menu-icon:d  :none
+                              :>.sidenav-close-icon:d :inline-flex
+                              :>ul:h                  "calc((100vh - (var(--navbar-height) * 2)) * 1)"
+                              :h                      :fit-content
+                              :o                      1} })
+"{
+  [data-foo-bar-sidenav][aria-expanded=\"true\"] & {
+    &>.sidenav-menu-icon {
+      display: none;
+    }
+    &>.sidenav-close-icon {
+      display: inline-flex;
+    }
+    &>ul {
+      height: calc((100vh - (var(--navbar-height) * 2)) * 1);
+    }
+    height: fit-content;
+    opacity: 1;
+  }
+}")))))
 
     (testing "vector ->"
       (testing "1 entry"
@@ -280,6 +375,13 @@
         (is (= (css-block [:c   :red] [:mie :1rem])
                "{\n  color: red;\n  margin-inline-end: 1rem;\n}")))
 
+      
+      (testing "1 entry, with css calc"
+        (is (= (css-block [:w "calc((100vh - (var(--navbar-height) * (2 + (6 / 2)))) * 1)"])
+"{
+  width: calc((100vh - (var(--navbar-height) * (2 + (6 / 2)))) * 1);
+}")))
+
       (testing "with psdeudoclass ->"
         (testing "1 entry"
           (is (= (css-block [:last-child:c :red])
@@ -287,7 +389,14 @@
         (testing "2 entry"
           (is (= (css-block [:last-child:c  :red]
                             [:first-child:c :blue])
-                 "{\n  &:last-child {\n    color: red;\n  }\n  &:first-child {\n    color: blue;\n  }\n}")))
+"{
+  &:last-child {
+    color: red;
+  }
+  &:first-child {
+    color: blue;
+  }
+}")))
         (testing "1 entry, nested"
           (is (= (css-block [:last-child {:c   :red
                                           :bgc :blue}])
@@ -295,17 +404,19 @@
         
         (testing "1 entry, double nesting"
           (is (= (css-block [:hover {:bgc :blue
-                                     :>p  {:c   :teal
-                                           :bgc :gray}}])
+                                        :>p  {:c   :teal
+                                              :bgc :gray}}])
 "{
   &:hover {
     background-color: blue;
     &>p {
-        color: teal;
-        background-color: gray;
+      color: teal;
+      background-color: gray;
     }
   }
-}")))
+}"
+                 
+                 )))
         
         (testing "2 entries, double nesting and grouping"
           (is (= (css-block [:hover {:bgc :blue
@@ -316,8 +427,8 @@
   &:hover {
     background-color: blue;
     &>p {
-        color: teal;
-        background-color: gray;
+      color: teal;
+      background-color: gray;
     }
     color: yellow;
   }
