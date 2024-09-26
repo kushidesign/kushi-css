@@ -8,7 +8,8 @@
    [clojure.walk :as walk :refer [prewalk postwalk]]
    [clojure.string :as string]
    [clojure.spec.alpha :as s]
-   [fireworks.core :refer [? !? ?> !?>]]
+   [fireworks.core :refer [? !? ?> !?> pprint]]
+   [bling.core :refer [bling ?sgr]]
   ;; for testing
   ;;  [taoensso.tufte :as tufte]
    ))
@@ -398,10 +399,9 @@
 (defmacro ^:public css-block
   "Returns a pretty-printed css rule block (no selector)."
   [& args]
-  (!? &form
-     (conformed-args args
-                     &form
-                     "kushi-css.core/css-block")))
+  (conformed-args args
+                  &form
+                  "kushi-css.core/css-block"))
 
 
 ;; TODO
@@ -421,7 +421,6 @@
 
 ;; TODO
 ;; - conditionally check for build state
-;; - Make sx version that returns map with :style and :class entries
 (defmacro ^:public css
   "Returns classlist string consisting of auto-generated classname and
    user-supplied classnames.
@@ -463,6 +462,33 @@
     ;; `[(when my-runtime-var "foo") my-classname "bar"]`
     ;;
     ;; If no conditional class forms, we can string/join it at compile time
+    (if (seq class-binding) 
+      `(string/join " " ~classes)
+      (string/join " " classes))))
+
+(defmacro ^:public ?css
+  "Same as css, but prints the result to (apply css-block args) to standard out"
+  [& args]
+  (pprint
+   (cons (symbol (bling [:bold '?css])) (rest &form)))
+  (println (bling [:green "=>"]))
+  (let [sel (loc-id &env &form)
+        block (conformed-args args
+                              &form
+                              "kushi-css.core/css-block")
+        block (-> block 
+                  (string/replace #"\{|\}|\;" #(bling [:gray %]))
+                  (string/replace #"(\&[^ ]+) \033\[38\;5\;247m\{\033\[0\;m" #(bling [:red (second %)] [:gray " {"]))
+                  (string/replace #"(.+): " #(bling [:magenta (second %)] [:gray ": "]))
+                  )]
+    (println (str (bling [:blue (str "." sel)]) 
+                  " "
+                  block)))
+  (let [{:keys [classes class-binding] :as m}
+        (apply classlist 
+               (if-not &env
+                 [&form args]
+                 [&env &form args]))]
     (if (seq class-binding) 
       `(string/join " " ~classes)
       (string/join " " classes))))
