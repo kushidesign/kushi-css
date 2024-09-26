@@ -6,7 +6,7 @@
    [kushi-css.printing :as printing]
    [kushi-css.util :refer [keyed]]
    [clojure.walk :as walk :refer [prewalk postwalk]]
-   [clojure.string :as string]
+   [clojure.string :as string :refer [replace] :rename {replace sr}]
    [clojure.spec.alpha :as s]
    [fireworks.core :refer [? !? ?> !?> pprint]]
    [bling.core :refer [bling ?sgr]]
@@ -127,13 +127,16 @@
   (and (vector? v)
        (every? vector? v)))
 
+
 (defn- sel-and-vec-of-vecs?2 [x]
   (boolean (and (vector? x)
                 (string? (nth x 0 nil))
                 (vec-of-vecs? (nth x 1 nil)))))
 
+
 (defn- more-than-one? [coll]
   (> (count coll) 1))
+
 
 (defn- dupe-reduce [grouped]
   (reduce-kv (fn [acc k v]
@@ -143,6 +146,7 @@
                     (conj acc)))
              []
              grouped))
+
 
 (defn group-shared*
   "Groups things for nesting.
@@ -197,7 +201,6 @@
            ret*
  ret]))
 
-
         ret))
 
 
@@ -209,14 +212,16 @@
       v)
     v))
 
+
 ;; -----------------------------------------------------------------------------
-;; API
+;; API Helpers
 ;; -----------------------------------------------------------------------------
+
 (defn- loc-id
   "Returns classname based on namespace and line + column.
    e.g. \"starter_browser__41_6\""
   [env form]
-  (when-let [ns* (some-> env :ns :name (string/replace #"\." "_"))]
+  (when-let [ns* (some-> env :ns :name (sr #"\." "_"))]
     (let [fm (meta form)]
      (str ns* "__L" (:line fm) "_C" (:column fm)))))
 
@@ -235,13 +240,11 @@
 ;;   "Returns classname based on namespace and line + column.
 ;;    e.g. \"starter_browser__41_6\""
 ;;   [env form]
-;;   (let [ns* (some-> env :ns :name (string/replace #"\." "_"))
+;;   (let [ns* (some-> env :ns :name (sr #"\." "_"))
 ;;         fm  (meta form)]
 ;;     (str ns* "__" (:line fm) "_" (:column fm))))
 
 ;; -----------------------------------------------------------------------------
-
-
 
 (defn- user-classlist
   "Expects a conformed map based on `::specs/sx-args`. This map is the
@@ -260,6 +263,7 @@
                                    class-kw-stringified
                                    (some-> loc-id vector)))})))
 
+
 (defn- classlist
   "Returns classlist vector of classnames as strings. Includes user-supplied
    classes, as well as auto-generated, namespace-derived classname from `css`
@@ -277,7 +281,9 @@
               :conformed-map)]
      (user-classlist m loc-id))))
 
+
 (defn- spaces [n] (string/join (repeat n " ")))
+
 
 (defn- css-block-str
   "Reduces nested vector representation of css-block into valid, potentially
@@ -348,26 +354,33 @@
   "Used be kushi-css.core/css-rule and kushi-css.core/css-block to validate and
    conform args. Returns a vector of `[conformed-args invalid-args]`"
   [args &form fname]
-  (let [conformed-args* (s/conform ::specs/sx-args args)
-        invalid-args?   (= conformed-args* :clojure.spec.alpha/invalid)
+  (let [conformed-args*           
+        (s/conform ::specs/sx-args args)
+
+        invalid-args?             
+        (= conformed-args* :clojure.spec.alpha/invalid)
+
         [valid-args
-         invalid-args]  (when invalid-args?
-                          (partition-by-spec ::specs/valid-sx-arg args))
-        conformed-args  (if invalid-args?
-                          (s/conform ::specs/sx-args valid-args)
-                            conformed-args*)
-        ret             (some->> conformed-args
-                                 css-block*
-                                 :css-block)]
-;; (pprint conformed-args)
-        (!? {
-             :conformed-args* conformed-args* 
-             :invalid-args?   invalid-args?   
-             :valid-args      valid-args
-             :invalid-args    invalid-args  
-             :conformed-args  conformed-args
-             }
-            )
+         invalid-args]            
+        (when invalid-args?
+          (partition-by-spec ::specs/valid-sx-arg args))
+
+        conformed-args            
+        (if invalid-args?
+          (s/conform ::specs/sx-args valid-args)
+          conformed-args*)
+
+        ret                       
+        (some->> conformed-args
+                 css-block*
+                 :css-block)]
+
+    #_(!? {:conformed-args* conformed-args* 
+         :invalid-args?   invalid-args?   
+         :valid-args      valid-args
+         :invalid-args    invalid-args  
+         :conformed-args  conformed-args})
+
     (when (seq invalid-args)
       (printing/cssrule-args
        {:fname        fname
@@ -375,6 +388,55 @@
         :form         &form
         :ret          ret}))
     ret))
+
+
+;; -----------------------------------------------------------------------------
+;; Print debugging helpers
+;; -----------------------------------------------------------------------------
+
+(defn- print-as-def [{:keys [&form sym]}]
+  (-> (cons (symbol (bling [:bold (str sym " \"" (second &form) "\"")]))
+               (drop 2 &form))
+         pprint
+         with-out-str
+         (sr #"\n$" "")
+         (sr #"\n" "\n ")))
+
+
+(defn- print-as-fcall [{:keys [&form sym]}]
+  (-> (rest &form)
+      pprint
+      with-out-str
+      (sr #"\n$" "")
+      (sr #"^\(|\)$" "")
+      (sr #"\n" (str "\n" (spaces (inc (count (name sym))))))
+      (->> (bling "(" [:bold (name sym)] " " ))
+      (str ")")))
+
+
+(defn- print-css-block [{:keys [args &form &env sym block] :as m}]
+  (println 
+   (if (= sym '?defcss)
+     (print-as-def m)
+     (print-as-fcall m)))
+  (println "=>")
+  (let [sel   (when-not block (bling [:blue (str "." (loc-id &env &form) " ")]))
+        block (or block
+                  (conformed-args args
+                                  &form
+                                  "kushi-css.core/css-block"))
+        blue  #(bling [:blue (second %)] " {")
+        block (-> block 
+                  (sr #";" #(bling [:gray %]))
+                  (sr #"^([^\{]+) \{" blue)
+                  (sr #"(\&[^ ]+) \{" blue)
+                  (sr #"(.+): " #(bling [:magenta (second %)] [:gray ": "])))]
+    (println (str sel block))))
+
+
+;; -----------------------------------------------------------------------------
+;; API
+;; -----------------------------------------------------------------------------
 
 
 (defmacro ^:public css-block-data
@@ -404,6 +466,12 @@
                   "kushi-css.core/css-block"))
 
 
+(defn- classes+class-binding [args &form &env]
+  (apply classlist 
+         (if-not &env
+           [&form args]
+           [&env &form args])))
+
 ;; TODO
 ;; - conditionally check for build state to do composing?
 ;; - maybe leave out for now?
@@ -418,6 +486,33 @@
          (conformed-args args
                          &form
                          "kushi-css.core/css-rule"))))
+
+
+(defmacro ^:public defcss
+  "Intended to be used to define shared css rulesets.
+   `sel` must be a valid css selector in the form of a string.
+   `args` must be valid style args, same as `css` and `sx`.
+   The function call will be picked up in the analyzation phase of a build, then
+   fed to `css-rule` to produce a css rule that will be written to disk.
+   Expands to nil."
+  [sel & args]
+  nil)
+
+
+(defmacro ^:public ?defcss
+  "Tapping version of `defcss`"
+  [sel & args]
+  (if-not (s/valid? ::specs/css-selector sel)
+    (printing/cssrule-selector sel &form)
+    (let [block (str sel
+                     " "
+                     (conformed-args args
+                                     &form
+                                     "kushi-css.core/css-rule"))]
+      (print-css-block (assoc (keyed [args &form &env block])
+                              :sym
+                              '?defcss))
+      nil)))
 
 ;; TODO
 ;; - conditionally check for build state
@@ -450,11 +545,7 @@
   (let [
         ;; If calling from a test namespace, it might not resolve a
         ;; val for &env so we will call classlist with 2 args instead of 3.
-        {:keys [classes class-binding] :as m}
-        (apply classlist 
-               (if-not &env
-                 [&form args]
-                 [&env &form args]))]
+        {:keys [classes class-binding]} (classes+class-binding args &form &env)]
 
     ;; If `classes` vector contains any symbols that are runtime bindings
     ;; intended to hold classnames (`class-bindings`) we will need to
@@ -466,48 +557,36 @@
       `(string/join " " ~classes)
       (string/join " " classes))))
 
+
 (defmacro ^:public ?css
-  "Same as css, but prints the result to (apply css-block args) to standard out"
+  "Tapping version of `css`"
   [& args]
-  (pprint
-   (cons (symbol (bling [:bold '?css])) (rest &form)))
-  (println (bling [:green "=>"]))
-  (let [sel (loc-id &env &form)
-        block (conformed-args args
-                              &form
-                              "kushi-css.core/css-block")
-        block (-> block 
-                  (string/replace #"\{|\}|\;" #(bling [:gray %]))
-                  (string/replace #"(\&[^ ]+) \033\[38\;5\;247m\{\033\[0\;m" #(bling [:red (second %)] [:gray " {"]))
-                  (string/replace #"(.+): " #(bling [:magenta (second %)] [:gray ": "]))
-                  )]
-    (println (str (bling [:blue (str "." sel)]) 
-                  " "
-                  block)))
-  (let [{:keys [classes class-binding] :as m}
-        (apply classlist 
-               (if-not &env
-                 [&form args]
-                 [&env &form args]))]
+  (print-css-block (assoc (keyed [args &form &env]) :sym '?css))
+  (let [{:keys [classes class-binding]} (classes+class-binding args &form &env)]
     (if (seq class-binding) 
       `(string/join " " ~classes)
       (string/join " " classes))))
+
 
 (defmacro ^:public sx
   "Returns a map with a :class string. Sugar for `{:class (css ...)}`, to avoid
    boilerplate when you are only applying styling to an element and therefore do
    not need to supply any html attributes other than :class."
   [& args]
-  (let [{:keys [classes class-binding] :as m}
-        (apply classlist 
-               (if-not &env
-                 [&form args]
-                 [&env &form args]))]
-
+  (let [{:keys [classes class-binding]} (classes+class-binding args &form &env)]
     (if (seq class-binding) 
       `{:class (string/join " " ~classes)}
       {:class (string/join " " classes)})))
 
+
+(defmacro ^:public ?sx
+  "Tapping version of `sx`"
+  [& args]
+  (print-css-block (assoc (keyed [args &form &env]) :sym '?sx))
+  (let [{:keys [classes class-binding]} (classes+class-binding args &form &env)]
+    (if (seq class-binding) 
+      `{:class (string/join " " ~classes)}
+      {:class (string/join " " classes)})))
 
 
 (defn- css-vars-map*
