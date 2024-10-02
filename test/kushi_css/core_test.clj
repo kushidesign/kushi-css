@@ -157,6 +157,9 @@
 ;; (? #_:pp (css :.foo :p--10px :c--red))
 
 
+;; (? (css :.foo--bang :c--red))
+;; (? (re-find specs/classname-with-dot-re ".pc--gold"))
+
 ;; Fix tests
 (do 
   ;; Figure out how to test these from a test namespace
@@ -179,15 +182,41 @@
           (is (= (css-block :.foo :c--red :bgc--blue)
                  "{\n  color: red;\n  background-color: blue;\n}")))
         (testing "with pseudoclasses"
-          (is (= (css-block :active:c--magenta :visited:c--orange :hover:c--red)
-                 "{\n  &:visited {\n    color: orange;\n  }\n  &:hover {\n    color: red;\n  }\n  &:active {\n    color: magenta;\n  }\n}")))
+          (is (= (css-block :active:c--magenta
+                            :visited:c--orange
+                            :hover:c--red)
+"{
+  &:visited {
+    color: orange;
+  }
+  &:hover {
+    color: red;
+  }
+  &:active {
+    color: magenta;
+  }
+}")))
         (testing "with pseudoclasses and nesting"
           (is (= (css-block :active:c--magenta
                             :visited:c--orange
                             :hover:c--red
                             :focus:c--pink
                             :focus:bgc--blue)
-                 "{\n  &:visited {\n    color: orange;\n  }\n  &:focus {\n    color: pink;\n    background-color: blue;\n  }\n  &:hover {\n    color: red;\n  }\n  &:active {\n    color: magenta;\n  }\n}"))))
+"{
+  &:visited {
+    color: orange;
+  }
+  &:focus {
+    color: pink;
+    background-color: blue;
+  }
+  &:hover {
+    color: red;
+  }
+  &:active {
+    color: magenta;
+  }
+}"))))
 
       (testing "keyword -> "
         (testing "1"
@@ -281,7 +310,7 @@
         (testing "1 entries, grouped"
           (is (= (css-block {:>p:c :red}
                             {:>p:bgc :blue})
-                 "{
+"{
   &>p {
     color: red;
     background-color: blue;
