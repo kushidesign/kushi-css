@@ -505,7 +505,7 @@
 
 
 (defn- conformed-args
-  "Used be kushi-css.core/css-rule and kushi-css.core/css-block to validate and
+  "Uses kushi-css.core/css-rule and kushi-css.core/css-block to validate and
    conform args. Returns a vector of `[conformed-args invalid-args]`"
   [args &form fname]
   (let [conformed-args*           

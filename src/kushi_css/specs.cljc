@@ -115,7 +115,14 @@
   (re-pattern-be css-selector-re-base))
 
 (def classname-with-dot-re
-  #"^\.\D\S*$")
+  ;; ".foo"     -> valid
+  ;; ".foo-3"   -> valid
+  ;; ".foo--3"  -> valid
+  ;; ".foo--3"  -> valid
+  ;; "."        -> invalid
+  ;; ".3foo"    -> invalid
+  ;; ".foo:c-r" -> invalid
+  #"^\.\D[^\:\s]*$")
 
 (def var-re-base
   "([a-zA-Z_-]+[a-zA-Z0-9_-\\|]*)")
@@ -177,16 +184,10 @@
   (s/and ::s|kw
          #(string/starts-with? (name %) "@")))
 
+
 ;; ## Specs for classes --------------------------------------------------------
-
-;; TODO - which one is better ::dot-kw or ::class?
-(s/def ::dot-kw
-  (s/and keyword?
-         #(-> % name (string/starts-with? "."))))
-
 (s/def ::class-kw
   (s/and keyword?
-         #(not (s/valid? ::tok-kw %))
          #(re-find classname-with-dot-re (name %))))
 
 
@@ -246,9 +247,9 @@
 
 (s/def ::valid-sx-arg
   (s/or 
+   :class-kw      ::class-kw
    :tokenized     ::tokenized
    :style-vec     ::style-vec
-   :class-kw      ::class-kw
    :style-map     ::style-map
    :class-binding symbol?  ;; <- intended for dynamic classnames (maybe remove?)
 
