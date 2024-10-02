@@ -3,7 +3,6 @@
    [kushi-css.defs :as defs]
    [kushi-css.hydrated :as hydrated]
    [kushi-css.specs :as specs]
-  ;;  [kushi-css.printing :as printing]
    [kushi-css.util :refer [keyed]]
    [clojure.walk :as walk :refer [prewalk postwalk]]
    [clojure.string :as string :refer [replace] :rename {replace sr}]
@@ -14,6 +13,23 @@
   ;;  [taoensso.tufte :as tufte]
    ))
 
+
+;; EEEEEEEEEEEEEEEEEEEEEERRRRRRRRRRRRRRRRR   RRRRRRRRRRRRRRRRR   
+;; E::::::::::::::::::::ER::::::::::::::::R  R::::::::::::::::R  
+;; E::::::::::::::::::::ER::::::RRRRRR:::::R R::::::RRRRRR:::::R 
+;; EE::::::EEEEEEEEE::::ERR:::::R     R:::::RRR:::::R     R:::::R
+;;   E:::::E       EEEEEE  R::::R     R:::::R  R::::R     R:::::R
+;;   E:::::E               R::::R     R:::::R  R::::R     R:::::R
+;;   E::::::EEEEEEEEEE     R::::RRRRRR:::::R   R::::RRRRRR:::::R 
+;;   E:::::::::::::::E     R:::::::::::::RR    R:::::::::::::RR  
+;;   E:::::::::::::::E     R::::RRRRRR:::::R   R::::RRRRRR:::::R 
+;;   E::::::EEEEEEEEEE     R::::R     R:::::R  R::::R     R:::::R
+;;   E:::::E               R::::R     R:::::R  R::::R     R:::::R
+;;   E:::::E       EEEEEE  R::::R     R:::::R  R::::R     R:::::R
+;; EE::::::EEEEEEEE:::::ERR:::::R     R:::::RRR:::::R     R:::::R
+;; E::::::::::::::::::::ER::::::R     R:::::RR::::::R     R:::::R
+;; E::::::::::::::::::::ER::::::R     R:::::RR::::::R     R:::::R
+;; EEEEEEEEEEEEEEEEEEEEEERRRRRRRR     RRRRRRRRRRRRRRR     RRRRRRR
 ;; -----------------------------------------------------------------------------
 ;; Warnings and Errors
 ;; -----------------------------------------------------------------------------
@@ -133,10 +149,25 @@
 
 
 
+;; FFFFFFFFFFFFFFFFFFFFFFLLLLLLLLLLL       TTTTTTTTTTTTTTTTTTTTTTT
+;; F::::::::::::::::::::FL:::::::::L       T:::::::::::::::::::::T
+;; F::::::::::::::::::::FL:::::::::L       T:::::::::::::::::::::T
+;; FF::::::FFFFFFFFF::::FLL:::::::LL       T:::::TT:::::::TT:::::T
+;;   F:::::F       FFFFFF  L:::::L         TTTTTT  T:::::T  TTTTTT
+;;   F:::::F               L:::::L                 T:::::T        
+;;   F::::::FFFFFFFFFF     L:::::L                 T:::::T        
+;;   F:::::::::::::::F     L:::::L                 T:::::T        
+;;   F:::::::::::::::F     L:::::L                 T:::::T        
+;;   F::::::FFFFFFFFFF     L:::::L                 T:::::T        
+;;   F:::::F               L:::::L                 T:::::T        
+;;   F:::::F               L:::::L         LLLLLL  T:::::T        
+;; FF:::::::FF           LL:::::::LLLLLLLLL:::::LTT:::::::TT      
+;; F::::::::FF           L::::::::::::::::::::::LT:::::::::T      
+;; F::::::::FF           L::::::::::::::::::::::LT:::::::::T      
+;; FFFFFFFFFFF           LLLLLLLLLLLLLLLLLLLLLLLLTTTTTTTTTTT      
 ;; -----------------------------------------------------------------------------
-;; Flattening / vectorizing
+;; Flattening / Vectorizing
 ;; -----------------------------------------------------------------------------
-
 (defn split-on [re v]
   (string/split (name v) re))
 
@@ -209,6 +240,24 @@
      :vectorized    vectorized}))
 
 
+;; -----------------------------------------------------------------------------
+;;         GGGGGGGGGGGGGRRRRRRRRRRRRRRRRR   PPPPPPPPPPPPPPPPP   
+;;      GGG::::::::::::GR::::::::::::::::R  P::::::::::::::::P  
+;;    GG:::::::::::::::GR::::::RRRRRR:::::R P::::::PPPPPP:::::P 
+;;   G:::::GGGGGGGG::::GRR:::::R     R:::::RPP:::::P     P:::::P
+;;  G:::::G       GGGGGG  R::::R     R:::::R  P::::P     P:::::P
+;; G:::::G                R::::R     R:::::R  P::::P     P:::::P
+;; G:::::G                R::::RRRRRR:::::R   P::::PPPPPP:::::P 
+;; G:::::G    GGGGGGGGGG  R:::::::::::::RR    P:::::::::::::PP  
+;; G:::::G    G::::::::G  R::::RRRRRR:::::R   P::::PPPPPPPPP    
+;; G:::::G    GGGGG::::G  R::::R     R:::::R  P::::P            
+;; G:::::G        G::::G  R::::R     R:::::R  P::::P            
+;;  G:::::G       G::::G  R::::R     R:::::R  P::::P            
+;;   G:::::GGGGGGGG::::GRR:::::R     R:::::RPP::::::PP          
+;;    GG:::::::::::::::GR::::::R     R:::::RP::::::::P          
+;;      GGG::::::GGG:::GR::::::R     R:::::RP::::::::P          
+;;         GGGGGG   GGGGRRRRRRRR     RRRRRRRPPPPPPPPPP          
+;;                                                      
 ;; -----------------------------------------------------------------------------
 ;; Grouping
 ;; -----------------------------------------------------------------------------
@@ -303,6 +352,24 @@
     v))
 
 
+;; -----------------------------------------------------------------------------
+;; HHHHHHHHH     HHHHHHHHHLLLLLLLLLLL             PPPPPPPPPPPPPPPPP   
+;; H:::::::H     H:::::::HL:::::::::L             P::::::::::::::::P  
+;; H:::::::H     H:::::::HL:::::::::L             P::::::PPPPPP:::::P 
+;; HH::::::H     H::::::HHLL:::::::LL             PP:::::P     P:::::P
+;;   H:::::H     H:::::H    L:::::L                 P::::P     P:::::P
+;;   H:::::H     H:::::H    L:::::L                 P::::P     P:::::P
+;;   H::::::HHHHH::::::H    L:::::L                 P::::PPPPPP:::::P 
+;;   H:::::::::::::::::H    L:::::L                 P:::::::::::::PP  
+;;   H:::::::::::::::::H    L:::::L                 P::::PPPPPPPPP    
+;;   H::::::HHHHH::::::H    L:::::L                 P::::P            
+;;   H:::::H     H:::::H    L:::::L                 P::::P            
+;;   H:::::H     H:::::H    L:::::L         LLLLLL  P::::P            
+;; HH::::::H     H::::::HHLL:::::::LLLLLLLLL:::::LPP::::::PP          
+;; H:::::::H     H:::::::HL::::::::::::::::::::::LP::::::::P          
+;; H:::::::H     H:::::::HL::::::::::::::::::::::LP::::::::P          
+;; HHHHHHHHH     HHHHHHHHHLLLLLLLLLLLLLLLLLLLLLLLLPPPPPPPPPP          
+                                                                
 ;; -----------------------------------------------------------------------------
 ;; API Helpers
 ;; -----------------------------------------------------------------------------
@@ -433,8 +500,8 @@
 
     {:css-block     (str "{\n" (css-block-str grouped) "}")
      :nested-vector grouped
-    ;; Leave this :nested-array-map out for now
-    ;; :nested-array-map (nested-array-map grouped)
+     ;; Leave this :nested-array-map out for now
+     ;; :nested-array-map (nested-array-map grouped)
      :classes       (-> conformed-map
                         user-classlist
                         :classes)}))
@@ -525,7 +592,22 @@
 
 
 ;; -----------------------------------------------------------------------------
-;; API
+;;                AAA               PPPPPPPPPPPPPPPPP   IIIIIIIIII
+;;               A:::A              P::::::::::::::::P  I::::::::I
+;;              A:::::A             P::::::PPPPPP:::::P I::::::::I
+;;             A:::::::A            PP:::::P     P:::::PII::::::II
+;;            A:::::::::A             P::::P     P:::::P  I::::I  
+;;           A:::::A:::::A            P::::P     P:::::P  I::::I  
+;;          A:::::A A:::::A           P::::PPPPPP:::::P   I::::I  
+;;         A:::::A   A:::::A          P:::::::::::::PP    I::::I  
+;;        A:::::A     A:::::A         P::::PPPPPPPPP      I::::I  
+;;       A:::::AAAAAAAAA:::::A        P::::P              I::::I  
+;;      A:::::::::::::::::::::A       P::::P              I::::I  
+;;     A:::::AAAAAAAAAAAAA:::::A      P::::P              I::::I  
+;;    A:::::A             A:::::A   PP::::::PP          II::::::II
+;;   A:::::A               A:::::A  P::::::::P          I::::::::I
+;;  A:::::A                 A:::::A P::::::::P          I::::::::I
+;; AAAAAAA                   AAAAAAAPPPPPPPPPP          IIIIIIIIII
 ;; -----------------------------------------------------------------------------
 
 
