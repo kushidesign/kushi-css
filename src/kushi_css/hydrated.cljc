@@ -150,14 +150,13 @@
  ;; TODO - revisit this example / docs. 
  "Given the following example:
   '(css
-    'foo
     :>p:last-child:c--blue
     :>p:last-child:after:c--orange
     [:>p:last-child:after:content \"\\\"my-content\\\"\"])
 
   Will return a data structure that will subsequently get transformed
   into the following nested css:
-  .foo {
+  .myns__L11C12 {
     &>p {
       &:last-child {
         color: blue;
@@ -185,7 +184,6 @@
    stack*))
 
 
-;; TODO make separate version for stack-with-bunched
 ;; -----------------------------------------------------------------------------
 ;; -----------------------------------------------------------------------------
 ;; "Bunching" reduction fns start 
@@ -272,15 +270,18 @@
       (when (s/valid? ::specs/s|kw p)
         p))))
 
+
 (defn stack1 [x]
   (when-let [s (some-> x first-el-str-or-kw name)] 
-    ;; We know it is not just a css prop if there is one of the
-    ;; following chars: colon, underscore, period, or space.
-    ;; Therefore it gets treated as a mod/mod-stack,
-    ;; and is split on the colon char.
+    ;; We know it is not just a css prop if there is one of the following chars:
+    ;; colon, underscore, period, or space.
+
+    ;; Therefore it gets treated as a mod/mod-stack, and is split on the colon
+    ;; character.
+
     ;; Will work for things like:
-    ;; `{:.cn:last-child:c :red}`
-    ;; `{:.cn:last-child {:c :red}}`
+    ;; `{:.foo:last-child:c :red}`
+    ;; `{:.foo:last-child {:c :red}}`
     (when-not (s/valid? ::specs/at-rule s)
       (when (re-find #"[:_\. ]" s)
         (string/split s #":")))))
@@ -306,29 +307,24 @@
    string/split the 'stack' into a sequence"
   [x]
   (if-let [stack (or (stack1 x) (stack2 x))]
-    (let [[_ v]           x
-          prop?           (s/valid? ::specs/s|kw|num v)
-          last-index      (-> stack count dec)
-          f               (partial modf last-index prop?)
-          stack*          (!? 'stack-og
-                          (into [] (map-indexed f stack)))
-          ;; stack-with-bunched (!? 'stack-with-bunched
-          ;;                      (stack-with-bunched stack*))
-          stack-unbunched (!? 'stack-unbunched-bunched
-                              (stack-unbunched stack*))
-          ;; ret          (nested-stack stack-with-bunched v prop?)
-          ret             (nested-stack stack-unbunched v prop?)
-          ]
-     (!?
-      (keyed [x
-              v
-              prop?
-              last-index
-              f
-              stack*
-             ;; stack-with-bunched
-              stack-unbunched
-              ret]))
+    (let [[_ v]         x
+          prop?         (s/valid? ::specs/s|kw|num v)
+          last-index    (-> stack count dec)
+          f             (partial modf last-index prop?)
+          stack*        (into [] (map-indexed f stack))
+          ;; Currently using (stack-unbunched stack*) to create `nested-stack*`.
+          ;; An alternate approach would be (stack-with-bunched. 
+          nested-stack* (stack-unbunched stack*)
+          ret           (nested-stack nested-stack* v prop?)]
+      #_(!?
+       (keyed [x
+               v
+               prop?
+               last-index
+               f
+               stack*
+               nested-stack*
+               ret]))
       ret)
 
     (if-let [mod (let [mod (when (vector? x) (nth x 0 nil))]
