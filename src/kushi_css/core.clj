@@ -7,8 +7,10 @@
    [clojure.walk :as walk :refer [prewalk postwalk]]
    [clojure.string :as string :refer [replace] :rename {replace sr}]
    [clojure.spec.alpha :as s]
+   ;; TODO conditionally require fireworks pprint for clj
    [fireworks.core :refer [? !? ?> !?> pprint]]
-   [bling.core :refer [bling callout point-of-interest ?sgr]]
+   [bling.core :refer [bling callout point-of-interest stack-trace-preview]]
+   [babashka.process :refer [shell]]
   ;; for testing
   ;;  [taoensso.tufte :as tufte]
    ))
@@ -798,3 +800,66 @@
   "Same as `css-vars`, but returns a map instead of a string."
   [& args]
   (css-vars-map* args))
+
+;; -----------------------------------------------------------------------------
+;; lightningcss ala-carte POC
+;; -----------------------------------------------------------------------------
+(def lightning-opts
+  {:browserslist               true
+   :bundle                     nil
+   :css-modules                nil
+   :css-modules-dashed-indents nil
+   :css-modules-pattern        nil
+   :custom-media               nil
+   :outdir-dir                 nil
+   :error-recovery             nil
+   :minify                     true
+   :output-file                nil
+   :sourcemap                  nil
+  ;;  :targets                    "\">= 0.25%\""
+  ;;  :targets                    ">= 0.25%"
+  ;;  :help                       nil
+  ;;  :version                    nil
+   })
+
+
+(defn lightning [css-str opts]
+  (let [flags (some->> opts
+                       (keep (fn [[flag v]] 
+                               (when v 
+                                 [(str "--" (name flag))
+                                  (when-not (true? v) v)])))
+                       (apply concat)
+                       (remove nil?)
+                       (into [{:in css-str :out :string}
+                              "npx"
+                              "lightningcss"]))]
+
+    (or (try (:out (apply shell flags))
+             (catch Exception e
+               (let [body (bling "Error when shelling out to lightningcss."
+                                 "\n\n"
+                                 [:italic.subtle.bold "CSS:"]
+                                 "\n"
+                                 css-str
+                                 "\n\n"
+                                 [:italic.subtle.bold
+                                  "Flags passed to lightningcss:\n"]
+                                 (with-out-str (pprint flags))
+                                 "\n\n"
+                                 [:italic.subtle.bold
+                                  "The following css will be returned:\n"]
+                                 css-str)] 
+                 (callout
+                  (merge opts
+                         {:type        :error
+                          :label       (str "ERROR: "
+                                            (string/replace (type e)
+                                                            #"^class "
+                                                            "" )
+                                            " (Caught)")
+                          :padding-top 0})
+                  (point-of-interest
+                   (merge opts {:type :error
+                                :body body}))))))
+        css-str)))

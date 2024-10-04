@@ -10,7 +10,9 @@
                                     css
                                     css-vars
                                     css-vars-map
-                                    sx]]
+                                    sx
+                                    lightning-opts
+                                    lightning]]
             [kushi-css.specs :as specs]
             [clojure.spec.alpha :as s]
             [clojure.walk :as walk]))
@@ -159,6 +161,22 @@
 
 ;; (? (css :.foo--bang :c--red))
 ;; (? (re-find specs/classname-with-dot-re ".pc--gold"))
+
+
+
+;; (def result 
+;; ".foo {
+;;   color: red;
+;;   & .bar {
+;;     color: green;
+;;   }
+;; }")
+
+;; (? (-> (css-rule ".foo" :c--red :_.bar:c--green)
+;;        (lightning lightning-opts)))
+
+#_(? (:out (shell {:in result :out :string} "npx" "lightningcss" "--minify" "--targets" ">= 0.25%")))
+
 
 ;; Fix tests
 (do 
