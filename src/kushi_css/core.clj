@@ -1,5 +1,6 @@
 (ns kushi-css.core
   (:require 
+   [fireworks.core :refer [? !? ?> !?>]]
    [kushi-css.defs :as defs]
    [kushi-css.hydrated :as hydrated]
    [kushi-css.specs :as specs]
@@ -8,7 +9,6 @@
    [clojure.string :as string :refer [replace] :rename {replace sr}]
    [clojure.spec.alpha :as s]
    ;; TODO conditionally require fireworks pprint for clj
-   [fireworks.core :refer [? !? ?> !?> pprint]]
    [bling.core :refer [bling callout point-of-interest stack-trace-preview]]
    [babashka.process :refer [shell]]
   ;; for testing
@@ -506,10 +506,11 @@
                         :classes)}))
 
 
-(defn- conformed-args
+(defn- nested-css-block
   "Uses kushi-css.core/css-rule and kushi-css.core/css-block to validate and
    conform args. Returns a vector of `[conformed-args invalid-args]`"
   [args &form fname]
+  
   (let [conformed-args*           
         (s/conform ::specs/sx-args args)
 
@@ -531,11 +532,6 @@
                  css-block*
                  :css-block)]
 
-    #_(!? {:conformed-args* conformed-args* 
-         :invalid-args?   invalid-args?   
-         :valid-args      valid-args
-         :invalid-args    invalid-args  
-         :conformed-args  conformed-args})
 
     (when (seq invalid-args)
       (cssrule-args-warning
@@ -553,7 +549,7 @@
 (defn- print-as-def [{:keys [&form sym]}]
   (-> (cons (symbol (bling [:bold (str sym " \"" (second &form) "\"")]))
                (drop 2 &form))
-         pprint
+         fireworks.core/pprint
          with-out-str
          (sr #"\n$" "")
          (sr #"\n" "\n ")))
@@ -561,7 +557,7 @@
 
 (defn- print-as-fcall [{:keys [&form sym]}]
   (-> (rest &form)
-      pprint
+      fireworks.core/pprint
       with-out-str
       (sr #"\n$" "")
       (sr #"^\(|\)$" "")
@@ -578,9 +574,9 @@
   (println "=>")
   (let [sel   (when-not block (bling [:blue (str "." (loc-id &env &form) " ")]))
         block (or block
-                  (conformed-args args
-                                  &form
-                                  "kushi-css.core/css-block"))
+                  (nested-css-block args
+                                    &form
+                                    "kushi-css.core/css-block"))
         blue  #(bling [:blue (second %)] " {")
         block (-> block 
                   (sr #";" #(bling [:gray %]))
@@ -633,9 +629,9 @@
 (defmacro ^:public css-block
   "Returns a pretty-printed css rule block (no selector)."
   [& args]
-  (conformed-args args
-                  &form
-                  "kushi-css.core/css-block"))
+  (nested-css-block args
+                    &form
+                    "kushi-css.core/css-block"))
 
 
 (defn- classes+class-binding [args &form &env]
@@ -655,9 +651,9 @@
     (cssrule-selector-warning sel &form)
     (str sel
          " "
-         (conformed-args args
-                         &form
-                         "kushi-css.core/css-rule"))))
+         (nested-css-block args
+                           &form
+                           "kushi-css.core/css-rule"))))
 
 
 (defmacro ^:public defcss
@@ -678,9 +674,9 @@
     (cssrule-selector-warning sel &form)
     (let [block (str sel
                      " "
-                     (conformed-args args
-                                     &form
-                                     "kushi-css.core/css-rule"))]
+                     (nested-css-block args
+                                       &form
+                                       "kushi-css.core/css-rule"))]
       (print-css-block (assoc (keyed [args &form &env block])
                               :sym
                               '?defcss))
@@ -845,7 +841,7 @@
                                  "\n\n"
                                  [:italic.subtle.bold
                                   "Flags passed to lightningcss:\n"]
-                                 (with-out-str (pprint flags))
+                                 (with-out-str (fireworks.core/pprint flags))
                                  "\n\n"
                                  [:italic.subtle.bold
                                   "The following css will be returned:\n"]
