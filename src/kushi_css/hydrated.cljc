@@ -2,7 +2,6 @@
   (:require [clojure.spec.alpha :as s]
             [clojure.string :as string]
             [clojure.walk :refer [prewalk]]
-            [fireworks.core :refer [!? ?]]
             [kushi-css.defs :as defs]
             [kushi-css.shorthand :as shorthand]
             [kushi-css.specs :as specs]

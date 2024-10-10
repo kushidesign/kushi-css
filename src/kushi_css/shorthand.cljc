@@ -1,6 +1,5 @@
 (ns kushi-css.shorthand
   (:require 
-   [fireworks.core :refer [?]]
    [clojure.string :as string]))
 
 
@@ -254,6 +253,7 @@
    "width"                     {:tier 1}
    "z-index"                   {:tier 1}})
 
+;; uses fireworks.pp/?pp
 #_(?pp
    (reduce-kv
     (fn [m k {:keys [tier vals shorthand] :as v}]
