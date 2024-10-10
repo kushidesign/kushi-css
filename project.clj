@@ -14,7 +14,7 @@
                                   "../humane-test-output-master/src"
                                   ]
                    :dependencies [[babashka/process "0.5.22"]
-                                  [io.github.paintparty/fireworks "0.6.4"]
+                                  [io.github.paintparty/fireworks "0.6.5"]
                                   [io.github.paintparty/bling "0.1.1"]
                                   ;; for testing
                                   [com.taoensso/tufte "2.6.3"]
