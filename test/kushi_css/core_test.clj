@@ -1,8 +1,7 @@
 (ns kushi-css.core-test
   (:require [clojure.test :refer :all]
-            [lasertag.core :refer [tag-map]]
-            [clojure.pprint :refer [pprint]]
             [fireworks.core :refer [? !? ?> !?>]]
+            [lasertag.core :refer [tag-map]]
             [kushi-css.core :refer [css-block-data
                                     css-block
                                     css-rule
@@ -172,11 +171,18 @@
 ;;   }
 ;; }")
 
-;; (? (-> (css-rule ".foo" :c--red :_.bar:c--green)
-;;        (lightning lightning-opts)))
+;; (? (into [] {:a "a" :b "b" :c "c"}))
 
-#_(? (:out (shell {:in result :out :string} "npx" "lightningcss" "--minify" "--targets" ">= 0.25%")))
+;; (? (:out (shell {:in result :out :string} "npx" "lightningcss" "--minify" "--targets" ">= 0.25%")))
 
+#_(css-block
+;;  12
+ :c--red
+ :bgc--blue
+ :p--10
+ {:>p {:bgc :blue
+       :b   :1px:solid:black
+       :p   :10px}})
 
 ;; Fix tests
 (do 
