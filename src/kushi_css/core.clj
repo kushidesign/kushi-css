@@ -36,6 +36,9 @@
 ;; Warnings and Errors
 ;; -----------------------------------------------------------------------------
 
+
+(declare ansi-colorized-css-block)
+
 (defn cssrule-selector-warning
   "Prints warning"
   [sel form]
@@ -64,25 +67,24 @@
   "Prints warning"
   [{:keys [fname          
            invalid-args        
-           form                
-           ret]}]
+           &form]
+    :as m}]
   (callout
-   {:type        :warning
-    :margin-top  0
-    :margin-bottom  1
-    :padding-top 1}
+   {:type          :warning
+    :margin-top    0
+    :margin-bottom 1
+    :padding-top   1}
    (point-of-interest
-    (merge {:file
-            ""
-            :header
-            (apply
-             bling
-             (concat ["Bad args to " [:italic fname] ":"
-                      "\n"]
-                     (interpose "\n"
-                                (map (fn [arg] [:bold arg])
-                                     invalid-args))
-                     ))
+    (merge {:file   ""
+            :type   :warning
+            :header (apply
+                     bling
+                     (concat ["Bad args to " [:italic fname] ":"
+                              "\n"]
+                             (interpose "\n"
+                                        (map (fn [arg] [:bold arg])
+                                             invalid-args))
+                             ))
             :body   (let [spec-data (s/form ::specs/valid-sx-arg)]
                       (apply
                        bling
@@ -110,17 +112,15 @@
                              :string)
                          
                          "\n\n"
-                         "The bad arguments will be discarded."
-                         "\n\n"
-                         "The follwing css ruleset will be created"
+                         "The bad arguments will be discarded, and"
                          "\n"
-                         "with the valid args:"
+                         "the following css ruleset will be created"
+                         "\n"
+                         "from the remaining valid arguments:"
                          "\n\n"]
-                        (interpose "\n"
-                                   (map (fn [x] [:blue x])
-                                        (string/split ret #"\n"))))))}
-           (meta form)
-           {:form form}))))
+                        (ansi-colorized-css-block m))))}
+           (meta &form)
+           {:form &form}))))
 
 ;; -----------------------------------------------------------------------------
 ;; Utilities
@@ -419,6 +419,7 @@
                                    class-kw-stringified
                                    (some-> loc-id vector)))})))
 
+(declare conformed-args)
 
 (defn- classlist
   "Returns classlist vector of classnames as strings. Includes user-supplied
@@ -427,19 +428,15 @@
   ([form args]
    (classlist {:ns {:name "some.test"}} form args))
   ([env form args]
-   (let [loc-id   
-         (some-> env (loc-id form))
-
-         m
-         (->> args
-              (s/conform ::specs/sx-args)
-              vectorized*
-              :conformed-map)]
+   (let [loc-id (some-> env (loc-id form))
+         m      (-> args
+                    conformed-args
+                    :conformed-args
+                    vectorized*
+                    :conformed-map)]
      (user-classlist m loc-id))))
 
-
 (defn- spaces [n] (string/join (repeat n " ")))
-
 
 (defn- css-block-str
   "Reduces nested vector representation of css-block into valid, potentially
@@ -484,10 +481,10 @@
    coll))
 
 
-(defn- css-block* [conformed]
+(defn- css-block* [conformed-args]
   (let [{:keys [vectorized
                 conformed-map]}
-        (vectorized* conformed)
+        (vectorized* conformed-args)
 
         grouped                 
         (!? 'grouped-new
@@ -505,12 +502,7 @@
                         user-classlist
                         :classes)}))
 
-
-(defn- nested-css-block
-  "Uses kushi-css.core/css-rule and kushi-css.core/css-block to validate and
-   conform args. Returns a vector of `[conformed-args invalid-args]`"
-  [args &form fname]
-  
+(defn conformed-args [args]
   (let [conformed-args*           
         (s/conform ::specs/sx-args args)
 
@@ -525,7 +517,16 @@
         conformed-args            
         (if invalid-args?
           (s/conform ::specs/sx-args valid-args)
-          conformed-args*)
+          conformed-args*)]
+    (keyed [conformed-args invalid-args])))
+
+(defn- nested-css-block
+  "Uses kushi-css.core/css-rule and kushi-css.core/css-block to validate and
+   conform args. Returns a vector of `[conformed-args invalid-args]`"
+  [args &form &env fname]
+  (let [{:keys [conformed-args
+                invalid-args]}
+        (conformed-args args)
 
         ret                       
         (some->> conformed-args
@@ -535,10 +536,13 @@
 
     (when (seq invalid-args)
       (cssrule-args-warning
-       {:fname        fname
-        :invalid-args invalid-args
-        :form         &form
-        :ret          ret}))
+       {:fname             fname
+        :args              args
+        :invalid-args      invalid-args
+        :&form              &form
+        :&env               &env
+        :block             ret
+        :display-selector? true}))
     ret))
 
 
@@ -566,16 +570,15 @@
       (str ")")))
 
 
-(defn- print-css-block [{:keys [args &form &env sym block] :as m}]
-  (println 
-   (if (= sym '?defcss)
-     (print-as-def m)
-     (print-as-fcall m)))
-  (println "=>")
-  (let [sel   (when-not block (bling [:blue (str "." (loc-id &env &form) " ")]))
+(defn- ansi-colorized-css-block
+  [{:keys [args &form &env block display-selector?] :as m}]
+  (let [sel   (when (or (not block)
+                        display-selector?)
+                (bling [:blue (str "." (loc-id &env &form) " ")]))
         block (or block
                   (nested-css-block args
                                     &form
+                                    &env
                                     "kushi-css.core/css-block"))
         blue  #(bling [:blue (second %)] " {")
         block (-> block 
@@ -583,7 +586,15 @@
                   (sr #"^([^\{]+) \{" blue)
                   (sr #"(\&[^ ]+) \{" blue)
                   (sr #"(.+): " #(bling [:magenta (second %)] [:gray ": "])))]
-    (println (str sel block))))
+    (str sel block)))
+
+(defn- print-css-block [{:keys [sym] :as m}]
+  (println 
+   (if (= sym '?defcss)
+     (print-as-def m)
+     (print-as-fcall m)))
+  (println "=>")
+  (println (ansi-colorized-css-block m)))
 
 
 ;;                AAA               PPPPPPPPPPPPPPPPP   IIIIIIIIII
@@ -631,6 +642,7 @@
   [& args]
   (nested-css-block args
                     &form
+                    &env
                     "kushi-css.core/css-block"))
 
 
@@ -653,6 +665,7 @@
          " "
          (nested-css-block args
                            &form
+                           &env
                            "kushi-css.core/css-rule"))))
 
 
@@ -676,6 +689,7 @@
                      " "
                      (nested-css-block args
                                        &form
+                                       &env
                                        "kushi-css.core/css-rule"))]
       (print-css-block (assoc (keyed [args &form &env block])
                               :sym
