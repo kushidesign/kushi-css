@@ -30,3 +30,4 @@ pom.xml.asc
 .calva
 .vscode
 .idea
+.vs-code.edn
