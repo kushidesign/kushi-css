@@ -2,7 +2,8 @@
   (:require [clojure.test :refer :all]
             [fireworks.core :refer [? !? ?> !?>]]
             [lasertag.core :refer [tag-map]]
-            [kushi-css.core :refer [css-block-data
+            [kushi-css.core :refer [css-keyframes
+                                    css-block-data
                                     css-block
                                     css-rule
                                     ?css
@@ -52,7 +53,7 @@
 ;;                 :h                      :fit-content
 ;;                 :o                      1} }))
 
-#_(? (css-rule ".go" :c--blue))
+(? (css-rule 5 :c--blue))
 #_(? (css-block
     ;; :hover:c--blue
     ;; :>a:hover:c--red
@@ -119,9 +120,17 @@
 ;;        :bgc :teal}]
     ))
 
-
-#_(css-block 
+(css-block 
  [:c "`binding`"])
+
+;; (? (css-keyframes
+;;     [:from {:transform "translateX(0%)"
+;;             :opacity   0}]
+;;     [:to {:transform "translateX(100%)"
+;;           :opacity   1}]))
+
+;;  (? (s/explain ::specs/keyframe-percentage "50%"))
+;;  (? (s/valid? ::specs/keyframe ["50%" {:color :blue}]))
 
 #_(css-rule ".gold"
           {:>p {:c   :red
