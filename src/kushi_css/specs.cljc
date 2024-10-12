@@ -192,6 +192,23 @@
 
 
 
+;; ## Specs for keyframes ------------------------------------------------------
+(s/def ::keyframe-ident
+  #{:from :to "from" "to"})
+
+(s/def ::keyframe-percentage
+  (s/and ::s|kw
+         #(re-find #"^100%$|^[0-9][0-9]?(?:\.[0-9]+)?%$" (name %))))
+
+(s/def ::keyframe-name 
+  (s/or :keyframe-ident ::keyframe-ident
+        :keyframe-percentage ::keyframe-percentage))
+
+(s/def ::keyframe
+  (s/tuple ::keyframe-name ::style-map))
+
+
+
 ;; ## Specs for tokenized keywords ---------------------------------------------
 
 (s/def ::tok-kw
