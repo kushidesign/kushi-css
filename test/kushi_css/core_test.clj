@@ -157,7 +157,7 @@
 ;;               [:to {:transform "translateX(100%)"
 ;;                     :opacity   1}]))
 
-(?at-rule "@keyframes slider"
+#_(?at-rule "@keyframes slider"
           [:from {:transform "translateX(0%)"
                   :opacity   0}]
           [:to {:transform "translateX(100%)"
@@ -244,7 +244,7 @@
        :p   :10px}})
 
 ;; Fix tests
-#_(do 
+(do 
   ;; Figure out how to test these from a test namespace
   #_(deftest css-macro 
     (testing "tokenized keyword"
