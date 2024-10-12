@@ -904,61 +904,6 @@
   (css-vars-map* args))
 
 
-;; TODO use existing code to deal with vectors, css lists, and cssvars
-;; TODO use at-rule instead of this - incorporate the spec stuff
-;; (defmacro ^:public at-keyframes*
-;;   "Creates a css @keyframes rule.
-;;    Examples:
-;;    (at-keyframes y-axis-spinner
-;;      [:33% {:transform \"rotateY(0deg)\"}]
-;;      [:100% {:transform \"rotateY(360deg)\"}])"
-;;   [nm & keyframes]
-;;   (let [[valid-keyframes invalid-keyframes]
-;;         (partition-by-spec ::specs/keyframe keyframes)]
-;;     (if (seq invalid-keyframes)
-;;       (bad-keyframes-warning invalid-keyframes &form)
-;;       (let [frames
-;;             (for [keyframe valid-keyframes]
-;;               (str (name (nth keyframe 0 nil))
-;;                    " "
-;;                    (nested-css-block [(nth keyframe 1 nil)]
-;;                                      &form
-;;                                      &env
-;;                                      "kushi-css.core/at-keyframes")))]
-;;         (double-nested-rule (str "@keyframes " nm) (string/join "\n" frames))))))
-
-;; (defmacro ^:public at-keyframes
-;;   "Creates a css @keyframes rule.
-;;    Examples:
-;;    (at-keyframes y-axis-spinner
-;;      [:33% {:transform \"rotateY(0deg)\"}]
-;;      [:100% {:transform \"rotateY(360deg)\"}])"
-;;   [nm & keyframes]
-;;   nil)
-
-(defmacro ^:public at-rule*OLD
-  "Returns a serialized css at-ruleset, with selector and potentially nested css
-   block."
-  [sel & args]
-  (if-not (s/valid? ::specs/at-selector sel)
-    (rule-selector-warning sel &form)
-    (if (string/starts-with? (name sel) "@keyframes")
-      (rule-selector-warning sel &form)
-      (if (and (= (count args) 1)
-               (-> args first map?))
-        (str sel
-             " "
-             (nested-css-block args
-                               &form
-                               &env
-                               "kushi-css.core/css-rule"))
-        (let [argsv (into [] args)]
-          `(double-nested-rule ~sel (string/join "\n" ~argsv))
-          #_`(str ~sel
-                  " {\n"
-                  (string/join "\n" ~argsv)
-                  "\n}"))))))
-
 (defn- at-rule*-inner
   [sel args &form &env]
   (if-not (s/valid? ::specs/at-selector sel)
