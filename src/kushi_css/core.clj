@@ -38,91 +38,121 @@
 
 (declare ansi-colorized-css-block)
 
-(defn at-selector-warning
-  "Prints warning"
-  [sel]
+(def use-at-keyframes-body 
+  (bling "You can use " [:bold 'kushi.core/at-keyframes] " to \n" 
+         "create CSS @keyframes animations.\n"
+         "\n"
+         "Example:\n"
+         "(" [:bold 'at-keyframes] " \"slider\"\n"
+         "              [:from {:transform \"translateX(0%)\"\n"
+         "                      :opacity   0}]\n"
+         "              [:to {:transform \"translateX(100%)\"\n"
+         "                    :opacity   1}])"
+         "\n\n\n"
+         "No css ruleset will be created."))
+
+(defn generic-warning
+  [{:keys [form header body]}]
   (callout {:type        :warning
             :padding-top 1}
-           (str (bling "Bad at-rule selector:"
-                       "\n"
-                       [:bold sel])
-                "\n\n"
-                (bling "The first argument to "
-                       [:bold "at-rule"]
-                       " must be:"
-                       "\n"
-                       "- a string starting with \"@\""
-                       "\n\n"
-                       "No css ruleset will be created."))))
+           (point-of-interest
+            (merge {:file   ""
+                    :type   :warning
+                    :header header
+                    :body   body}
+                   (meta form)
+                   {:form form}))))
 
-
-(defn cssrule-selector-warning
+(defn rule-selector-warning
   "Prints warning"
   [sel form]
-  (callout {:type        :warning
-            :padding-top 1}
-           (point-of-interest
-            (merge {:file   ""
-                    :type   :warning
-                    :header (bling "Bad css selector:"
-                                   "\n"
-                                   [:bold sel])
-                    :body   (bling "The first argument to "
-                                   [:bold "cssrule"]
-                                   " must be:"
-                                   "\n"
-                                   "- a string"
-                                   "\n"
-                                   "- valid css selector"
-                                   "\n\n"
-                                   "No css ruleset will be created.")}
-                   (meta form)
-                   {:form form}))))
+  (let [[sym] form]
+    (generic-warning 
+     {:form   form
+      :header (bling "Bad " sym " selector:\n"
+                     [:bold sel])
+      :body   (if (and (string? sel)
+                       (string/starts-with? sel "@keyframes"))
+                use-at-keyframes-body
+                (let [reqs (case sym
+                             at-rule
+                             "- a string starting with \"@\""
+                             (str "- a string"
+                                  "\n"
+                                  "- valid css selector"))]
+                  (bling "The first argument to "
+                         [:bold sym]
+                         " must be:"
+                         "\n"
+                         reqs
+                         "\n\n"
+                         "No css ruleset will be created.")))})))
 
+(def bad-keyframe-warning-body
+  (bling "A css keyframe must be represented as a "
+         "two-element vector."
+         "\n\n"
+         "The first element must be: "
+         "\n"
+         "- one of " [:neutral (str #{:to :from "to" "from"})]
+         "\n" [:italic "OR"] "\n"
+         "- A percentage from "
+         [:neutral "0%-100%"]
+         " as keyword or string, e.g. "
+         [:neutral ":50%, \"50%\""]
+         "\n\n"
+         "The second element must be a valid style map such as:"
+         "\n"
+         [:neutral "{:transform \"translateX(100%)\""]
+         "\n"
+         [:neutral " :color     \"red\""]
+         "\n"
+         [:neutral " :red       \"red\""]
+         "\n\n"
+         "No keyframe animation will be created."))
 
-(defn bad-keyframes-warning
-  "Prints warning for bad css keyframe"
-  [keyframes form]
-  (callout {:type        :warning
-            :padding-top 1}
-           (point-of-interest
-            (merge {:file   ""
-                    :type   :warning
-                    :header (let [multiple? (< 1 (count keyframes))]
-                              (bling (str "Bad css keyframe"
-                                          (when multiple? "s")
-                                          ":")
-                                     "\n"
-                                     (if multiple? 
-                                       (with-out-str
-                                         (fireworks.core/pprint 
-                                          keyframes))
-                                       [:bold (with-out-str
-                                                (fireworks.core/pprint 
-                                                 (first keyframes)))])))
-                    :body   (bling "A css keyframe must be represented as a "
-                                   "two-element vector."
-                                   "\n\n"
-                                   "The first element must be: "
-                                   "\n"
-                                   "- one of " [:neutral (str #{:to :from "to" "from"})]
-                                   "\n" [:italic "OR"] "\n"
-                                   "- A percentage from "
-                                   [:neutral "0%-100%"]
-                                   " as keyword or string, e.g. "
-                                   [:neutral ":50%, \"50%\""]
-                                   "\n\n"
-                                   "The second element must be a valid style map such as:"
-                                   "\n"
-                                   [:neutral "{:transform \"translateX(100%)\""]
-                                   "\n"
-                                   [:neutral " :color     \"red\""]
-                                   "\n"
-                                   [:neutral " :red       \"red\""]
-                                   "\n\n"
-                                   "No keyframe animation will be created.")}
-                   (meta form)
-                   {:form form}))))
+(def bad-at-rule-arg-warning-body
+  (bling [:bold 'at-rule] " can be called 2 ways:\n\n"
+         "1) With a selector and a "
+         "single map:\n"
+         "(" [:bold "at-rule"] " \"@font-face\"\n"
+         "         {:font-family \"Trickster\"\n"
+         "          :src         \"local(Trickster)\"})"
+         "\n\n"
+         "2) With a selector and one or more vectors:\n"
+         "(" [:bold "at-rule"]
+         " \"@supports not (color: oklch(50% .37 200))\"\n"
+         "         [\".element\" {:color :red}]\n"
+         "         [\".element2\" {:color :blue}]\"})"))
+
+(defn- trimmed-pprint [x]
+  (-> x
+      fireworks.core/pprint
+      with-out-str
+      (string/replace #"\n$" "")))
+
+(defn bad-at-rule-arg-warning
+  "Prints warning for bad at-rule arg."
+  [at-rule-args form]
+  (let [keyframes? (-> form 
+                       second
+                       (string/starts-with? "@keyframes"))] 
+    (generic-warning
+     {:form   form
+      :header (let [multiple? (< 1 (count at-rule-args))]
+                (bling (str (if keyframes? 
+                              "Bad CSS keyframe"
+                              "Bad at-rule arg")
+                            (when multiple? "s")
+                            ":")
+                       "\n"
+                       (if multiple? 
+                         (trimmed-pprint at-rule-args)
+                         [:bold (trimmed-pprint
+                                 (first at-rule-args))])))
+      :body (if keyframes? 
+              bad-keyframe-warning-body
+              bad-at-rule-arg-warning-body)})))
 
 
 (defn cssrule-args-warning
@@ -131,56 +161,48 @@
            invalid-args        
            &form]
     :as m}]
-  (callout
-   {:type          :warning
-    :margin-top    0
-    :margin-bottom 1
-    :padding-top   1}
-   (point-of-interest
-    (merge {:file   ""
-            :type   :warning
-            :header (apply
-                     bling
-                     (concat ["Bad args to " [:italic fname] ":"
-                              "\n"]
-                             (interpose "\n"
-                                        (map (fn [arg] [:bold arg])
-                                             invalid-args))))
-            :body   (let [spec-data (s/form ::specs/valid-sx-arg)]
-                      (apply
-                       bling
-                       (concat
-                        [(if (contains? #{"kushi.core/css-rule"}
-                                        fname)
-                           "All args beyond the first are validated with:"
-                           "All args are validated with:")
-                         "\n"
-                         [:bold.italic (str ::specs/valid-sx-arg)]
-                         "\n\n"
-                         [:italic (-> (? :data
-                                         {:theme "Neutral Light"}
-                                         (nth spec-data 0 nil))
-                                      :formatted
-                                      :string)]
-                         "\n"
-                         (-> (? :data
-                                {:theme             "Neutral Light"
-                                 :display-metadata? false}
-                                (with-meta (apply hash-map (rest spec-data))
-                                  {:fw/hide-brackets? true}))
-                             :formatted
-                             :string)
-                         
-                         "\n\n"
-                         "The bad arguments will be discarded, and"
-                         "\n"
-                         "the following css ruleset will be created"
-                         "\n"
-                         "from the remaining valid arguments:"
-                         "\n\n"]
-                        (ansi-colorized-css-block m))))}
-           (meta &form)
-           {:form &form}))))
+  (generic-warning
+   {:form   &form
+    :header (apply
+             bling
+             (concat ["Bad args to " [:italic fname] ":"
+                      "\n"]
+                     (interpose "\n"
+                                (map (fn [arg] [:bold arg])
+                                     invalid-args))))
+    :body   (let [spec-data (s/form ::specs/valid-sx-arg)]
+              (apply
+               bling
+               (concat
+                [(if (contains? #{"kushi.core/css-rule"}
+                                fname)
+                   "All args beyond the first are validated with:"
+                   "All args are validated with:")
+                 "\n"
+                 [:bold.italic (str ::specs/valid-sx-arg)]
+                 "\n\n"
+                 [:italic (-> (? :data
+                                 {:theme "Neutral Light"}
+                                 (nth spec-data 0 nil))
+                              :formatted
+                              :string)]
+                 "\n"
+                 (-> (? :data
+                        {:theme             "Neutral Light"
+                         :display-metadata? false}
+                        (with-meta (apply hash-map (rest spec-data))
+                          {:fw/hide-brackets? true}))
+                     :formatted
+                     :string)
+                 
+                 "\n\n"
+                 "The bad arguments will be discarded, and"
+                 "\n"
+                 "the following css ruleset will be created"
+                 "\n"
+                 "from the remaining valid arguments:"
+                 "\n\n"]
+                (ansi-colorized-css-block m))))}))
 
 ;; -----------------------------------------------------------------------------
 ;; Utilities
@@ -563,7 +585,9 @@
                         :classes)}))
 
 
-(defn conformed-args [args]
+(defn conformed-args 
+  "Returns a vector of `[conformed-args invalid-args]`"
+  [args]
   (let [conformed-args*           
         (s/conform ::specs/sx-args args)
 
@@ -583,8 +607,7 @@
 
 
 (defn- nested-css-block
-  "Uses kushi-css.core/css-rule and kushi-css.core/css-block to validate and
-   conform args. Returns a vector of `[conformed-args invalid-args]`"
+  "Returns a potentially nested block of css"
   [args &form &env fname]
   (let [{:keys [conformed-args
                 invalid-args]}
@@ -659,6 +682,13 @@
   (println (ansi-colorized-css-block m)))
 
 
+(defn double-nested-rule [nm joined]
+  (str nm
+       " {\n"
+       (string/replace (str "  " joined) #"\n" "\n  ")
+       "\n}"))
+
+
 ;;                AAA               PPPPPPPPPPPPPPPPP   IIIIIIIIII
 ;;               A:::A              P::::::::::::::::P  I::::::::I
 ;;              A:::::A             P::::::PPPPPP:::::P I::::::::I
@@ -722,7 +752,7 @@
    block."
   [sel & args]
   (if-not (s/valid? ::specs/css-selector sel)
-    (cssrule-selector-warning sel &form)
+    (rule-selector-warning sel &form)
     (str sel
          " "
          (nested-css-block args
@@ -730,25 +760,9 @@
                            &env
                            "kushi-css.core/css-rule"))))
 
-;; Should this be a macro?
-(defn ^:public at-rule
-  "Returns a serialized css ruleset, with selector and potentially nested css
-   block."
-  [sel & args]
-  (if-not (s/valid? ::specs/at-selector sel)
-    (at-selector-warning sel)
-    ;; check args against spec
-    (str sel
-         " {\n"
-         (let [nested-blocks (if (and (= (count args) 1)
-                                      (-> args first map?))
-                               (nested-css-block args nil nil nil)
-                               (string/join "\n" args))]
-           (str "  " (string/replace nested-blocks #"\n" "\n  ")))
-         "\n}")))
 
 (defmacro ^:public defcss
-  "Intended to be used to define shared css rulesets.
+  "Used to define shared css rulesets.
    `sel` must be a valid css selector in the form of a string.
    `args` must be valid style args, same as `css` and `sx`.
    The function call will be picked up in the analyzation phase of a build, then
@@ -762,7 +776,7 @@
   "Tapping version of `defcss`"
   [sel & args]
   (if-not (s/valid? ::specs/css-selector sel)
-    (cssrule-selector-warning sel &form)
+    (rule-selector-warning sel &form)
     (let [block (str sel
                      " "
                      (nested-css-block args
@@ -892,39 +906,116 @@
 
 ;; TODO use existing code to deal with vectors, css lists, and cssvars
 ;; TODO use at-rule instead of this - incorporate the spec stuff
-(defmacro ^:public defcss-keyframes
-  "Creates a css @keyframes rule.
-   Examples:
-   (defcss-keyframes y-axis-spinner
-     [:33% {:transform \"rotateY(0deg)\"}]
-     [:100% {:transform \"rotateY(360deg)\"}])"
-  [animation-name & keyframes]
-  (let [[valid-keyframes invalid-keyframes]
-        (partition-by-spec ::specs/keyframe keyframes)]
-    (if (seq invalid-keyframes)
-      (bad-keyframes-warning invalid-keyframes &form)
-      (let [frames
-            (for [keyframe valid-keyframes]
-              (str (name (nth keyframe 0 nil))
-                   " "
-                   (nested-css-block [(nth keyframe 1 nil)]
-                                     &form
-                                     &env
-                                     "kushi-css.core/defcss-keyframes")))]
-        (str animation-name " {\n"
-             (string/replace (str "  " (string/join "\n" frames)) #"\n" "\n  ")
-             "\n}")))))
+;; (defmacro ^:public at-keyframes*
+;;   "Creates a css @keyframes rule.
+;;    Examples:
+;;    (at-keyframes y-axis-spinner
+;;      [:33% {:transform \"rotateY(0deg)\"}]
+;;      [:100% {:transform \"rotateY(360deg)\"}])"
+;;   [nm & keyframes]
+;;   (let [[valid-keyframes invalid-keyframes]
+;;         (partition-by-spec ::specs/keyframe keyframes)]
+;;     (if (seq invalid-keyframes)
+;;       (bad-keyframes-warning invalid-keyframes &form)
+;;       (let [frames
+;;             (for [keyframe valid-keyframes]
+;;               (str (name (nth keyframe 0 nil))
+;;                    " "
+;;                    (nested-css-block [(nth keyframe 1 nil)]
+;;                                      &form
+;;                                      &env
+;;                                      "kushi-css.core/at-keyframes")))]
+;;         (double-nested-rule (str "@keyframes " nm) (string/join "\n" frames))))))
 
-(defmacro bang-outer
-  [nm a]
-  `(str ~nm
-        " {\n"
-        ~a
-        "\n}"))
+;; (defmacro ^:public at-keyframes
+;;   "Creates a css @keyframes rule.
+;;    Examples:
+;;    (at-keyframes y-axis-spinner
+;;      [:33% {:transform \"rotateY(0deg)\"}]
+;;      [:100% {:transform \"rotateY(360deg)\"}])"
+;;   [nm & keyframes]
+;;   nil)
 
-(defmacro bang-inner
-  [n]
-  (* n n))
+(defmacro ^:public at-rule*OLD
+  "Returns a serialized css at-ruleset, with selector and potentially nested css
+   block."
+  [sel & args]
+  (if-not (s/valid? ::specs/at-selector sel)
+    (rule-selector-warning sel &form)
+    (if (string/starts-with? (name sel) "@keyframes")
+      (rule-selector-warning sel &form)
+      (if (and (= (count args) 1)
+               (-> args first map?))
+        (str sel
+             " "
+             (nested-css-block args
+                               &form
+                               &env
+                               "kushi-css.core/css-rule"))
+        (let [argsv (into [] args)]
+          `(double-nested-rule ~sel (string/join "\n" ~argsv))
+          #_`(str ~sel
+                  " {\n"
+                  (string/join "\n" ~argsv)
+                  "\n}"))))))
+
+(defn- at-rule*-inner
+  [sel args &form &env]
+  (if-not (s/valid? ::specs/at-selector sel)
+    (rule-selector-warning sel &form)
+    (let [f (fn [sel args]
+              (str sel " " (nested-css-block args
+                                             &form
+                                             &env
+                                             "kushi-css.core/at-rule")))]
+      (if (and (= (count args) 1)
+               (-> args first map?))
+        ;; Just a normal at-rule
+        (f sel args)
+
+        ;; An at-keyframes or another that takes nested blocks
+        (let [keyframes?
+              (string/starts-with? (name sel) "@keyframes")
+
+              spc        
+              (if keyframes? ::specs/keyframe ::specs/style-vec)
+
+              [valid-vecs invalid-vecs]
+              (partition-by-spec spc args)]
+
+          (if (seq invalid-vecs)
+            (bad-at-rule-arg-warning invalid-vecs &form)
+            (let [blocks (for [[nested-sel m] valid-vecs]
+                           (f (name nested-sel) [m]))]
+              (double-nested-rule sel (string/join "\n" blocks)))))))))
+
+
+(defmacro ^:public at-rule*
+  "Returns a serialized css at-ruleset, with selector and potentially nested css
+   block."
+  [sel & args]
+  (at-rule*-inner sel args &form &env))
+
+
+(defmacro ^:public at-rule
+  "Used to define shared css at-rules.
+   `sel` must be a string starting with \"@\".
+   `args` must be valid style map .
+   The function call will be picked up in the analyzation phase of a build, then
+   fed to `kushi-css.core/at-rule*` to produce a css at-rule that will be
+   written to disk.
+   Expands to nil."
+  [sel & args]
+  nil)
+
+(defmacro ^:public ?at-rule
+  "Tapping version of at-rule"
+  [sel & args]
+  (let [block (at-rule*-inner sel args &form &env)]
+    (print-css-block (assoc (keyed [args &form &env block])
+                            :sym
+                            '?at-rule))
+    nil))
 
 ;; -----------------------------------------------------------------------------
 ;; lightningcss ala-carte POC

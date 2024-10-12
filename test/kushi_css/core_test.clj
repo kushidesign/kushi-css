@@ -2,20 +2,21 @@
   (:require [clojure.test :refer :all]
             [fireworks.core :refer [? !? ?> !?>]]
             [lasertag.core :refer [tag-map]]
-            [kushi-css.core :refer [defcss-keyframes
-                                    bang-inner
-                                    bang-outer
+            [kushi-css.core :refer [at-rule
+                                    ;; at-rule*
+                                    at-rule*
+                                    ?at-rule
                                     css-block-data
                                     css-block
                                     css-rule
                                     ?css
+                                    ?defcss
                                     css
                                     css-vars
                                     css-vars-map
                                     sx
                                     lightning-opts
-                                    lightning
-                                    at-rule]]
+                                    lightning]]
             [kushi-css.specs :as specs]
             [clojure.spec.alpha :as s]
             [clojure.walk :as walk]))
@@ -59,15 +60,14 @@
 
 ;; (? (css-rule "@font-face" :c--blue))
 
-;; (!? (at-rule "@supports not (color: oklch(50% .37 200))"
-;;             (css-rule ".element" {:color :#0288D1})
-;;             (css-rule ".element2" {:color :#0288D1})))
+;; (at-rule "supports not (color: oklch(50% .37 200))"
+;;            (css-rule ".element" {:color :#0288D7}))
 
-#_(? (css-rule ".element" {:color :#0288D1}))
+;; (css-rule 9 {:color :#0288D1})
 
 #_(? (at-rule "@font-face"
             {:font-family "Trickster"
-             :src         "local(Trickster), url(\"trickster-COLRv1.otf\") format(\"opentype\") tech(color-COLRv1),"}))
+             :src         "local(Trickster), url(\"trickster-COLRv1.otf\") format(\"opentype\") tech(color-COLRv1)"}))
 
 
 ;; (!? (css-block 
@@ -141,13 +141,33 @@
 ;;        :bgc :teal}]
     ))
 
-;; (? (bang-outer "whoa" (bang-inner 6)))
+;; (?defcss ".bang" :c--blue)
 
-;; (? (defcss-keyframes "slider"
-;;     [:from {:transform "translateX(0%)"
-;;             :opacity   0}]
-;;     [:to {:transform "translateX(100%)"
-;;           :opacity   1}]))
+;; (? (at-rule* "@supports not (color: oklch(50% .37 200))"
+;;             (css-rule ".element" {:color :#0288D7})
+;;             (css-rule ".element2" {:color :#0288D0})))
+
+;; (? (at-rule*2 "@supports not (color: oklch(50% .37 200))"
+;;               3 #_[".element" {:color :#0288D7}]
+;;               [".element2" {:color :#0288D0}]))
+
+;; (? (at-rule*2 "@keyframes slider"
+;;               [:froms {:transform "translateX(0%)"
+;;                       :opacity   0}]
+;;               [:to {:transform "translateX(100%)"
+;;                     :opacity   1}]))
+
+(?at-rule "@keyframes slider"
+          [:from {:transform "translateX(0%)"
+                  :opacity   0}]
+          [:to {:transform "translateX(100%)"
+                :opacity   1}])
+
+#_(at-keyframes "slider"
+              [:from {:transform "translateX(0%)"
+                      :opacity   0}]
+              [:to {:transform "translateX(100%)"
+                    :opacity   1}])
 
 ;; (?css :hover:c--blue
 ;;     :>a:hover:c--red
