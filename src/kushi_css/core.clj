@@ -36,7 +36,6 @@
 ;; Warnings and Errors
 ;; -----------------------------------------------------------------------------
 
-
 (declare ansi-colorized-css-block)
 
 (defn cssrule-selector-warning
@@ -46,6 +45,7 @@
             :padding-top 1}
            (point-of-interest
             (merge {:file   ""
+                    :type   :warning
                     :header (bling "Bad css selector:"
                                    "\n"
                                    [:bold sel]
@@ -59,6 +59,51 @@
                                    "- valid css selector"
                                    )
                     :body   "No css ruleset will be created."}
+                   (meta form)
+                   {:form form}))))
+
+
+(defn bad-keyframes-warning
+  "Prints warning for bad css keyframe"
+  [keyframes form]
+  (callout {:type        :warning
+            :padding-top 1}
+           (point-of-interest
+            (merge {:file   ""
+                    :type   :warning
+                    :header (let [multiple? (< 1 (count keyframes))]
+                              (bling (str "Bad css keyframe"
+                                          (when multiple? "s")
+                                          ":")
+                                     "\n"
+                                     (if multiple? 
+                                       (with-out-str
+                                         (fireworks.core/pprint 
+                                          keyframes))
+                                       [:bold (with-out-str
+                                                (fireworks.core/pprint 
+                                                 (first keyframes)))])))
+                    :body   (bling "A css keyframe must be represented as a "
+                                   "two-element vector."
+                                   "\n\n"
+                                   "The first element must be: "
+                                   "\n"
+                                   "- one of " [:neutral (str #{:to :from "to" "from"})]
+                                   "\n" [:italic "OR"] "\n"
+                                   "- A percentage from "
+                                   [:neutral "0%-100%"]
+                                   " as keyword or string, e.g. "
+                                   [:neutral ":50%, \"50%\""]
+                                   "\n\n"
+                                   "The second element must be a valid style map such as:"
+                                   "\n"
+                                   [:neutral "{:transform \"translateX(100%)\""]
+                                   "\n"
+                                   [:neutral " :color     \"red\""]
+                                   "\n"
+                                   [:neutral " :red       \"red\""]
+                                   "\n\n"
+                                   "No keyframe animation will be created.")}
                    (meta form)
                    {:form form}))))
 
@@ -810,6 +855,30 @@
   "Same as `css-vars`, but returns a map instead of a string."
   [& args]
   (css-vars-map* args))
+
+
+;; TODO use existing code to deal with vectors, css lists, and cssvars
+(defmacro ^:public css-keyframes
+  "Creates a css @keyframes rule.
+   Examples:
+   (css-keyframes y-axis-spinner
+     [:33% {:transform \"rotateY(0deg)\"}]
+     [:100% {:transform \"rotateY(360deg)\"}])"
+  [& keyframes]
+  (let [[valid-keyframes invalid-keyframes]
+        (partition-by-spec ::specs/keyframe keyframes)]
+    (if (seq invalid-keyframes)
+      (bad-keyframes-warning invalid-keyframes &form)
+      (let [frames
+            (for [keyframe valid-keyframes]
+              (str (name (nth keyframe 0 nil))
+                   " "
+                   (nested-css-block [(nth keyframe 1 nil)]
+                                     &form
+                                     &env
+                                     "kushi-css.core/css-keyframes")))]
+        (string/join "\n" frames)))))
+
 
 ;; -----------------------------------------------------------------------------
 ;; lightningcss ala-carte POC
