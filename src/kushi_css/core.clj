@@ -590,7 +590,6 @@
                 invalid-args]}
         (conformed-args args)
 
-        _ (pprint conformed-args)
         ret                       
         (some->> conformed-args
                  css-block*
@@ -892,13 +891,14 @@
 
 
 ;; TODO use existing code to deal with vectors, css lists, and cssvars
-(defmacro ^:public css-keyframes
+;; TODO use at-rule instead of this - incorporate the spec stuff
+(defmacro ^:public defcss-keyframes
   "Creates a css @keyframes rule.
    Examples:
-   (css-keyframes y-axis-spinner
+   (defcss-keyframes y-axis-spinner
      [:33% {:transform \"rotateY(0deg)\"}]
      [:100% {:transform \"rotateY(360deg)\"}])"
-  [& keyframes]
+  [animation-name & keyframes]
   (let [[valid-keyframes invalid-keyframes]
         (partition-by-spec ::specs/keyframe keyframes)]
     (if (seq invalid-keyframes)
@@ -910,9 +910,21 @@
                    (nested-css-block [(nth keyframe 1 nil)]
                                      &form
                                      &env
-                                     "kushi-css.core/css-keyframes")))]
-        (string/join "\n" frames)))))
+                                     "kushi-css.core/defcss-keyframes")))]
+        (str animation-name " {\n"
+             (string/replace (str "  " (string/join "\n" frames)) #"\n" "\n  ")
+             "\n}")))))
 
+(defmacro bang-outer
+  [nm a]
+  `(str ~nm
+        " {\n"
+        ~a
+        "\n}"))
+
+(defmacro bang-inner
+  [n]
+  (* n n))
 
 ;; -----------------------------------------------------------------------------
 ;; lightningcss ala-carte POC

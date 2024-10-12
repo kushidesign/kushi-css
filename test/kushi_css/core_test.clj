@@ -2,7 +2,9 @@
   (:require [clojure.test :refer :all]
             [fireworks.core :refer [? !? ?> !?>]]
             [lasertag.core :refer [tag-map]]
-            [kushi-css.core :refer [css-keyframes
+            [kushi-css.core :refer [defcss-keyframes
+                                    bang-inner
+                                    bang-outer
                                     css-block-data
                                     css-block
                                     css-rule
@@ -63,7 +65,7 @@
 
 #_(? (css-rule ".element" {:color :#0288D1}))
 
-(? (at-rule "@font-face"
+#_(? (at-rule "@font-face"
             {:font-family "Trickster"
              :src         "local(Trickster), url(\"trickster-COLRv1.otf\") format(\"opentype\") tech(color-COLRv1),"}))
 
@@ -139,12 +141,23 @@
 ;;        :bgc :teal}]
     ))
 
+;; (? (bang-outer "whoa" (bang-inner 6)))
 
-;; (? (css-keyframes
+;; (? (defcss-keyframes "slider"
 ;;     [:from {:transform "translateX(0%)"
 ;;             :opacity   0}]
 ;;     [:to {:transform "translateX(100%)"
 ;;           :opacity   1}]))
+
+;; (?css :hover:c--blue
+;;     :>a:hover:c--red
+;;     :_a:hover:c--gold ; The "_" gets converted to " "
+;;     :.bar:hover:c--pink
+;;     :before:fw--bold
+;;     :after:mie--5px
+;;     ["~a:hover:c" :blue] ; Vector is used as "~" is not valid in a keyword
+;;     ["nth-child(2):c" :red] ; Vector is used as "(" and ")" are not valid in keywords
+;;     [:before:content "\"⌫\""])
 
 ;;  (? (s/explain ::specs/keyframe-percentage "50%"))
 ;;  (? (s/valid? ::specs/keyframe ["50%" {:color :blue}]))
