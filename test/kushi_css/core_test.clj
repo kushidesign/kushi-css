@@ -12,7 +12,8 @@
                                     css-vars-map
                                     sx
                                     lightning-opts
-                                    lightning]]
+                                    lightning
+                                    at-rule]]
             [kushi-css.specs :as specs]
             [clojure.spec.alpha :as s]
             [clojure.walk :as walk]))
@@ -53,7 +54,25 @@
 ;;                 :h                      :fit-content
 ;;                 :o                      1} }))
 
-(? (css-rule 5 :c--blue))
+
+;; (? (css-rule "@font-face" :c--blue))
+
+;; (!? (at-rule "@supports not (color: oklch(50% .37 200))"
+;;             (css-rule ".element" {:color :#0288D1})
+;;             (css-rule ".element2" {:color :#0288D1})))
+
+#_(? (css-rule ".element" {:color :#0288D1}))
+
+(? (at-rule "@font-face"
+            {:font-family "Trickster"
+             :src         "local(Trickster), url(\"trickster-COLRv1.otf\") format(\"opentype\") tech(color-COLRv1),"}))
+
+
+;; (!? (css-block 
+;;     {:font-family "Trickster"
+;;      :src         "local(Trickster), url(\"trickster-COLRv1.otf\") format(\"opentype\") tech(color-COLRv1),"}))
+
+
 #_(? (css-block
     ;; :hover:c--blue
     ;; :>a:hover:c--red
@@ -120,8 +139,6 @@
 ;;        :bgc :teal}]
     ))
 
-(css-block 
- [:c "`binding`"])
 
 ;; (? (css-keyframes
 ;;     [:from {:transform "translateX(0%)"
@@ -194,7 +211,7 @@
        :p   :10px}})
 
 ;; Fix tests
-(do 
+#_(do 
   ;; Figure out how to test these from a test namespace
   #_(deftest css-macro 
     (testing "tokenized keyword"

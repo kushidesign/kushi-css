@@ -1,6 +1,6 @@
 (ns kushi-css.core
   (:require 
-   [fireworks.core :refer [? !? ?> !?>]]
+   [fireworks.core :refer [? !? ?> !?> pprint]]
    [kushi-css.defs :as defs]
    [kushi-css.hydrated :as hydrated]
    [kushi-css.specs :as specs]
@@ -38,6 +38,24 @@
 
 (declare ansi-colorized-css-block)
 
+(defn at-selector-warning
+  "Prints warning"
+  [sel]
+  (callout {:type        :warning
+            :padding-top 1}
+           (str (bling "Bad at-rule selector:"
+                       "\n"
+                       [:bold sel])
+                "\n\n"
+                (bling "The first argument to "
+                       [:bold "at-rule"]
+                       " must be:"
+                       "\n"
+                       "- a string starting with \"@\""
+                       "\n\n"
+                       "No css ruleset will be created."))))
+
+
 (defn cssrule-selector-warning
   "Prints warning"
   [sel form]
@@ -48,17 +66,16 @@
                     :type   :warning
                     :header (bling "Bad css selector:"
                                    "\n"
-                                   [:bold sel]
-                                   "\n\n"
-                                   "The first argument to "
-                                   [:bold.blue "cssrule"]
+                                   [:bold sel])
+                    :body   (bling "The first argument to "
+                                   [:bold "cssrule"]
                                    " must be:"
                                    "\n"
                                    "- a string"
                                    "\n"
                                    "- valid css selector"
-                                   )
-                    :body   "No css ruleset will be created."}
+                                   "\n\n"
+                                   "No css ruleset will be created.")}
                    (meta form)
                    {:form form}))))
 
@@ -128,8 +145,7 @@
                               "\n"]
                              (interpose "\n"
                                         (map (fn [arg] [:bold arg])
-                                             invalid-args))
-                             ))
+                                             invalid-args))))
             :body   (let [spec-data (s/form ::specs/valid-sx-arg)]
                       (apply
                        bling
@@ -137,8 +153,7 @@
                         [(if (contains? #{"kushi.core/css-rule"}
                                         fname)
                            "All args beyond the first are validated with:"
-                           "All args are validated with:"
-                           )
+                           "All args are validated with:")
                          "\n"
                          [:bold.italic (str ::specs/valid-sx-arg)]
                          "\n\n"
@@ -547,6 +562,7 @@
                         user-classlist
                         :classes)}))
 
+
 (defn conformed-args [args]
   (let [conformed-args*           
         (s/conform ::specs/sx-args args)
@@ -565,6 +581,7 @@
           conformed-args*)]
     (keyed [conformed-args invalid-args])))
 
+
 (defn- nested-css-block
   "Uses kushi-css.core/css-rule and kushi-css.core/css-block to validate and
    conform args. Returns a vector of `[conformed-args invalid-args]`"
@@ -573,6 +590,7 @@
                 invalid-args]}
         (conformed-args args)
 
+        _ (pprint conformed-args)
         ret                       
         (some->> conformed-args
                  css-block*
@@ -713,6 +731,22 @@
                            &env
                            "kushi-css.core/css-rule"))))
 
+;; Should this be a macro?
+(defn ^:public at-rule
+  "Returns a serialized css ruleset, with selector and potentially nested css
+   block."
+  [sel & args]
+  (if-not (s/valid? ::specs/at-selector sel)
+    (at-selector-warning sel)
+    ;; check args against spec
+    (str sel
+         " {\n"
+         (let [nested-blocks (if (and (= (count args) 1)
+                                      (-> args first map?))
+                               (nested-css-block args nil nil nil)
+                               (string/join "\n" args))]
+           (str "  " (string/replace nested-blocks #"\n" "\n  ")))
+         "\n}")))
 
 (defmacro ^:public defcss
   "Intended to be used to define shared css rulesets.

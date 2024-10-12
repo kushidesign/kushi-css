@@ -166,6 +166,14 @@
    #(re-find css-selector-re %)))
 
 
+;; ## Specs for at-rule-selector -----------------------------------------------
+
+(s/def ::at-selector
+  (s/and 
+   string?
+   #(re-find #"^@.+$" %)))
+
+
 ;; ## Specs for css-values -----------------------------------------------------
 
 (s/def ::css-value ::s|kw|num)
@@ -241,6 +249,7 @@
   (s/tuple ::css-prop-stack ::css-value))
 
 (s/def ::style-vec
+  ;; TODO - is :css-value redundant here?
   (s/tuple ::css-prop-stack #(or (s/valid? ::css-value %)
                                  (s/valid? ::style-map-value %))))
 
@@ -255,6 +264,12 @@
   (s/map-of ::css-prop-stack ::style-map-value))
 
 
+;; ## Specs for css-rule-call --------------------------------------------------
+
+(s/def ::css-rule-call
+  (s/and list?
+         #(= 'css-rule (nth % 0 nil))))
+
 
 ;; ## Specs for args to `sx` `css` and `defcss` macros -------------------------
 
@@ -268,6 +283,7 @@
    :tokenized     ::tokenized
    :style-vec     ::style-vec
    :style-map     ::style-map
+   :css-rule-call ::css-rule-call
    :class-binding symbol?  ;; <- intended for dynamic classnames (maybe remove?)
 
    ;; ! removed :logic-sexp
