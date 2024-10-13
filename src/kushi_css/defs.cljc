@@ -164,3 +164,25 @@
 
 ;; (def pseudo-classes
 ;;   (into #{} pseudo-classes*))
+
+(def at-rules
+  #{"keyframes"
+    "font-face"
+    "media"
+    "charset"
+    "container"
+    "supports"
+    "import"
+    "layer"
+    "page"
+    "scope"
+    "property"
+    "color-profile"
+    "counter-style"
+    "font-feature-values"
+    "font-palette-values"
+    "namespace"
+    "position-try"
+    "starting-style"
+    "view-transition"  })
+

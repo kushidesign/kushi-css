@@ -682,10 +682,10 @@
   (println (ansi-colorized-css-block m)))
 
 
-(defn double-nested-rule [nm joined]
+(defn double-nested-rule [nm blocks]
   (str nm
        " {\n"
-       (string/replace (str "  " joined) #"\n" "\n  ")
+       (string/replace (str "  " (string/join "\n" blocks)) #"\n" "\n  ")
        "\n}"))
 
 
@@ -744,21 +744,76 @@
            [&form args]
            [&env &form args])))
 
-;; TODO
-;; - conditionally check for build state to do composing?
-;; - maybe leave out for now?
+
+;; TODO optimize for speed
+;; Maybe this is not needed if you can do post-write validation with lightningcss?
+(defn- bad-at-rule-name?
+  [sel]
+  (boolean
+   (and (string? sel)
+        (not (string/blank? sel))
+        (not (re-find #"^[\.\#\[\@\~\+\*]" sel))
+        (< 3 (count sel))
+        (re-find #"^[cfiklmnpsv]" (subs sel 0))
+        (->> (string/split sel #" ")
+             first
+             (contains? defs/at-rules)))))
+
+
+(defn- css-rule* [sel args &form &env]
+  ;; Check if user supplied bad at-rule name, forgetting a leading "@".
+  (if (bad-at-rule-name? sel)
+   (println (str "It looks like you are trying to construct an "
+                 (str "@" sel)
+                 " rule and you forget a leading \"@\".") )
+   (if (s/valid? ::specs/at-selector sel)
+
+    ;; at-rule ---------------------------------
+     (let [f (fn [sel args]
+               (str sel " "
+                    (nested-css-block args &form &env "kushi-css.core/at-rule")))]
+       (cond
+        ;; @ keyframes ---------------------
+         (string/starts-with? (name sel) "@keyframes")
+        ;; TODO - make spec for @keyframe selector
+         (if-not (re-find #"^@keyframes [a-z]+.*$" (name sel))
+          ;; TODO - Add real warning
+           (println "bad keyframe name")
+           (let [[vecs bad-vecs] (partition-by-spec ::specs/keyframe args)]
+             (if (seq bad-vecs)
+               (bad-at-rule-arg-warning bad-vecs &form)
+               (let [blocks (for [[nested-sel m] vecs]
+                              (f (name nested-sel) [m]))]
+                 (double-nested-rule sel blocks)))))
+         
+        ;; @ rule with nested css rules ----
+        ;; TODO
+        ;;  - created ::nested-css-rule spec
+        ;;  - then use partition-by-spec to remove bad ones and warn
+         (every? #(and (list? %) (= (first %) 'css-rule)) args)
+         (let [blocks (for [[_ nested-sel & style-args] args]
+                        (f nested-sel style-args))]
+           (double-nested-rule sel blocks))
+         
+        ;; @ rule with no nested rules -----
+         :else
+         (f sel args)))
+
+    ;; normal-css-rule ------------------------
+     (if-not (s/valid? ::specs/css-selector sel)
+       (rule-selector-warning sel &form)
+       (str sel
+            " "
+            (nested-css-block args
+                              &form
+                              &env
+                              "kushi-css.core/css-rule"))))))
+
 (defmacro ^:public css-rule
   "Returns a serialized css ruleset, with selector and potentially nested css
    block."
   [sel & args]
-  (if-not (s/valid? ::specs/css-selector sel)
-    (rule-selector-warning sel &form)
-    (str sel
-         " "
-         (nested-css-block args
-                           &form
-                           &env
-                           "kushi-css.core/css-rule"))))
+  (css-rule* sel args &form &env))
 
 
 (defmacro ^:public defcss
@@ -775,14 +830,10 @@
 (defmacro ^:public ?defcss
   "Tapping version of `defcss`"
   [sel & args]
-  (if-not (s/valid? ::specs/css-selector sel)
+  (if-not (or (s/valid? ::specs/css-selector sel)
+              (s/valid? ::specs/at-selector sel))
     (rule-selector-warning sel &form)
-    (let [block (str sel
-                     " "
-                     (nested-css-block args
-                                       &form
-                                       &env
-                                       "kushi-css.core/css-rule"))]
+    (let [block (css-rule* sel args &form &env)]
       (print-css-block (assoc (keyed [args &form &env block])
                               :sym
                               '?defcss))
@@ -904,63 +955,6 @@
   (css-vars-map* args))
 
 
-(defn- at-rule*-inner
-  [sel args &form &env]
-  (if-not (s/valid? ::specs/at-selector sel)
-    (rule-selector-warning sel &form)
-    (let [f (fn [sel args]
-              (str sel " " (nested-css-block args
-                                             &form
-                                             &env
-                                             "kushi-css.core/at-rule")))]
-      (if (and (= (count args) 1)
-               (-> args first map?))
-        ;; Just a normal at-rule
-        (f sel args)
-
-        ;; An at-keyframes or another that takes nested blocks
-        (let [keyframes?
-              (string/starts-with? (name sel) "@keyframes")
-
-              spc        
-              (if keyframes? ::specs/keyframe ::specs/style-vec)
-
-              [valid-vecs invalid-vecs]
-              (partition-by-spec spc args)]
-
-          (if (seq invalid-vecs)
-            (bad-at-rule-arg-warning invalid-vecs &form)
-            (let [blocks (for [[nested-sel m] valid-vecs]
-                           (f (name nested-sel) [m]))]
-              (double-nested-rule sel (string/join "\n" blocks)))))))))
-
-
-(defmacro ^:public at-rule*
-  "Returns a serialized css at-ruleset, with selector and potentially nested css
-   block."
-  [sel & args]
-  (at-rule*-inner sel args &form &env))
-
-
-(defmacro ^:public at-rule
-  "Used to define shared css at-rules.
-   `sel` must be a string starting with \"@\".
-   `args` must be valid style map .
-   The function call will be picked up in the analyzation phase of a build, then
-   fed to `kushi-css.core/at-rule*` to produce a css at-rule that will be
-   written to disk.
-   Expands to nil."
-  [sel & args]
-  nil)
-
-(defmacro ^:public ?at-rule
-  "Tapping version of at-rule"
-  [sel & args]
-  (let [block (at-rule*-inner sel args &form &env)]
-    (print-css-block (assoc (keyed [args &form &env block])
-                            :sym
-                            '?at-rule))
-    nil))
 
 ;; -----------------------------------------------------------------------------
 ;; lightningcss ala-carte POC

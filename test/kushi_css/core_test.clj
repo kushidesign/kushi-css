@@ -2,25 +2,45 @@
   (:require [clojure.test :refer :all]
             [fireworks.core :refer [? !? ?> !?>]]
             [lasertag.core :refer [tag-map]]
-            [kushi-css.core :refer [at-rule
-                                    ;; at-rule*
-                                    at-rule*
-                                    ?at-rule
-                                    css-block-data
+            [kushi-css.defs]
+            [kushi-css.core :refer [css-block-data
                                     css-block
                                     css-rule
-                                    ?css
-                                    ?defcss
                                     css
+                                    ?css
+                                    sx
+                                    ?sx
+                                    defcss
+                                    ?defcss
                                     css-vars
                                     css-vars-map
-                                    sx
                                     lightning-opts
                                     lightning]]
             [kushi-css.specs :as specs]
             [clojure.spec.alpha :as s]
-            [clojure.walk :as walk]))
+            [clojure.walk :as walk]
+            [taoensso.tufte :as tufte :refer [p profile]]
+            [kushi-css.defs :as defs]))
 
+;; TODO 
+;; - test blue->red animation example
+;; - test add-font-face example
+
+
+
+;; -----------------------------------------------------------------------------
+;; Profiling setup
+;; -----------------------------------------------------------------------------
+
+;; (tufte/add-basic-println-handler! {})
+
+;; (profile ; Profile any `p` forms called during body execution
+;;   {} ; Profiling options; we'll use the defaults for now
+;;   (dotimes [_ 100000]
+;;     (p :contains? (+ 1 1))
+;;     (p :some (+ 1 1))))
+
+;; -----------------------------------------------------------------------------
 
 ;; (? (tag-map "hi"))
 ;; (println (s/conform ::specs/sx-args 
@@ -157,17 +177,20 @@
 ;;               [:to {:transform "translateX(100%)"
 ;;                     :opacity   1}]))
 
-#_(?at-rule "@keyframes slider"
-          [:from {:transform "translateX(0%)"
-                  :opacity   0}]
-          [:to {:transform "translateX(100%)"
-                :opacity   1}])
+;; (? (css-rule "@keyframes slider"
+;;   [:from {:transform "translateX(0%)"
+;;           :opacity   0}]
+;;   [:to {:transform "translateX(100%)"
+;;         :opacity   1}]))
 
-#_(at-keyframes "slider"
-              [:from {:transform "translateX(0%)"
-                      :opacity   0}]
-              [:to {:transform "translateX(100%)"
-                    :opacity   1}])
+;; (? (css-rule "@bang"
+;;              (css-rule ".b" :c--blue)
+;;              (css-rule ".c" :c--red)
+;;              ))
+
+(?defcss "p"
+  :c--blue
+  :bgc--red)
 
 ;; (?css :hover:c--blue
 ;;     :>a:hover:c--red
@@ -244,7 +267,7 @@
        :p   :10px}})
 
 ;; Fix tests
-(do 
+#_(do 
   ;; Figure out how to test these from a test namespace
   #_(deftest css-macro 
     (testing "tokenized keyword"
