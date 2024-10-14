@@ -32,6 +32,7 @@
 ;; E::::::::::::::::::::ER::::::R     R:::::RR::::::R     R:::::R
 ;; E::::::::::::::::::::ER::::::R     R:::::RR::::::R     R:::::R
 ;; EEEEEEEEEEEEEEEEEEEEEERRRRRRRR     RRRRRRRRRRRRRRR     RRRRRRR
+;;
 ;; -----------------------------------------------------------------------------
 ;; Warnings and Errors
 ;; -----------------------------------------------------------------------------
@@ -62,6 +63,26 @@
                     :body   body}
                    (meta form)
                    {:form form}))))
+
+(defn bad-at-rule-name-warning [sel &form]
+  (generic-warning 
+   {:form   &form
+    :header (bling
+             "It seems you are trying to construct an\n"
+             [:bold (str "@" sel)] 
+             " rule and you forget a leading "
+             [:bold "\"@\"."])}))
+
+(defn bad-at-keyframes-name-warning [sel &form]
+  (generic-warning
+   {:form   &form
+    :header (bling
+             "Bad @keyframes name:\n"
+             [:bold (str "\"" sel "\"")])
+    :body   (bling "When constructing an @keyframes rule with\n"
+                   [:bold 'kushi.core/defcss] ", the first argument should be:\n"
+                   "\"@keyframes <your-animation-name>\"\n"
+                   (str ::specs/keyframe-selector))}))
 
 (defn rule-selector-warning
   "Prints warning"
@@ -689,6 +710,32 @@
        "\n}"))
 
 
+(defn- classes+class-binding [args &form &env]
+  (apply classlist 
+         (if-not &env
+           [&form args]
+           [&env &form args])))
+
+
+;; TODO optimize for speed
+;; Maybe this is not needed if you can do post-write validation with lightningcss?
+(defn- bad-at-rule-name?
+  "Determines wheter user is trying to create an at-rule but supplied an at rule
+   without the leading @."
+  [sel]
+  (boolean
+   (and (string? sel)
+        (not (string/blank? sel))
+        (not (re-find #"^[\.\#\[\@\~\+\*]" sel))
+        (< 3 (count sel))
+        (re-find #"^[cfiklmnpsv]" (subs sel 0))
+        (->> (string/split sel #" ")
+             first
+             (contains? defs/at-rules)))))
+
+
+
+
 ;;                AAA               PPPPPPPPPPPPPPPPP   IIIIIIIIII
 ;;               A:::A              P::::::::::::::::P  I::::::::I
 ;;              A:::::A             P::::::PPPPPP:::::P I::::::::I
@@ -738,47 +785,23 @@
                     "kushi-css.core/css-block"))
 
 
-(defn- classes+class-binding [args &form &env]
-  (apply classlist 
-         (if-not &env
-           [&form args]
-           [&env &form args])))
-
-
-;; TODO optimize for speed
-;; Maybe this is not needed if you can do post-write validation with lightningcss?
-(defn- bad-at-rule-name?
-  [sel]
-  (boolean
-   (and (string? sel)
-        (not (string/blank? sel))
-        (not (re-find #"^[\.\#\[\@\~\+\*]" sel))
-        (< 3 (count sel))
-        (re-find #"^[cfiklmnpsv]" (subs sel 0))
-        (->> (string/split sel #" ")
-             first
-             (contains? defs/at-rules)))))
-
-
 (defn- css-rule* [sel args &form &env]
   ;; Check if user supplied bad at-rule name, forgetting a leading "@".
   (if (bad-at-rule-name? sel)
-   (println (str "It looks like you are trying to construct an "
-                 (str "@" sel)
-                 " rule and you forget a leading \"@\".") )
+
+   (bad-at-rule-name-warning sel &form)
+
    (if (s/valid? ::specs/at-selector sel)
 
-    ;; at-rule ---------------------------------
+     ;; CSS at-rule -----------------------------------------------
      (let [f (fn [sel args]
                (str sel " "
                     (nested-css-block args &form &env "kushi-css.core/at-rule")))]
        (cond
-        ;; @ keyframes ---------------------
-         (string/starts-with? (name sel) "@keyframes")
-        ;; TODO - make spec for @keyframe selector
-         (if-not (re-find #"^@keyframes [a-z]+.*$" (name sel))
-          ;; TODO - Add real warning
-           (println "bad keyframe name")
+        ;; @ keyframes --------------------------
+         (string/starts-with? sel "@keyframes")
+         (if-not (s/valid? ::specs/keyframe-selector sel)
+           (bad-at-keyframes-name-warning sel &form)
            (let [[vecs bad-vecs] (partition-by-spec ::specs/keyframe args)]
              (if (seq bad-vecs)
                (bad-at-rule-arg-warning bad-vecs &form)
@@ -786,7 +809,7 @@
                               (f (name nested-sel) [m]))]
                  (double-nested-rule sel blocks)))))
          
-        ;; @ rule with nested css rules ----
+        ;; CSS at-rule with nested css rules ----
         ;; TODO
         ;;  - created ::nested-css-rule spec
         ;;  - then use partition-by-spec to remove bad ones and warn
@@ -795,11 +818,11 @@
                         (f nested-sel style-args))]
            (double-nested-rule sel blocks))
          
-        ;; @ rule with no nested rules -----
+        ;; @ CSS rule with no nested rules ------
          :else
          (f sel args)))
 
-    ;; normal-css-rule ------------------------
+    ;; Normal css-rule -------------------------------------------
      (if-not (s/valid? ::specs/css-selector sel)
        (rule-selector-warning sel &form)
        (str sel
@@ -808,6 +831,7 @@
                               &form
                               &env
                               "kushi-css.core/css-rule"))))))
+
 
 (defmacro ^:public css-rule
   "Returns a serialized css ruleset, with selector and potentially nested css
@@ -918,7 +942,7 @@
   "Constructs a style map for assigning locals to css custom properties."
   [args]
   (reduce (fn [acc sym]
-            (assoc acc (str "--_" sym) sym))
+            (assoc acc (str "--" sym) sym))
           {}
           args))
 
@@ -933,16 +957,16 @@
    102 |   {:style (css-vars my-var1 my-var2)
    103 |    :class (css :c--$my-var1 :bgc--$my-var2)})
    =>
-   {:style {\"--_my-var1\" my-var1
-            \"--_my-var2\" my-var1}
+   {:style {\"--my-var1\" my-var1
+            \"--my-var2\" my-var1}
     :class \"foo_core__L103_C11\"}
    
    The call to `css` produces the following class in the build's
    watch/analyze/css generation process:
 
    .foo_core__L103_C11 {
-     color: --_my-var1;
-     background-color: --_my-var2;
+     color: --my-var1;
+     background-color: --my-var2;
    }"
   [& args]
   (let [m (css-vars-map* args)]
@@ -958,7 +982,28 @@
 
 ;; -----------------------------------------------------------------------------
 ;; lightningcss ala-carte POC
+;; 
+;; When using modern css features such as nesting and color spacs such as okclh,
+;; most projects targeting a broader web audience will need to use some degree
+;; of post-processing (on authored CSS) to target older browsers. For the
+;; typical cljs frontend workflow (assuming Shadow-cljs or Figwheel), a good way
+;; to achieve this is to install `lightningcss-cli` locally in the project via
+;; the package.json file, then configure a watcher (for dev) to transform the
+;; project css that is either hand-written or generated by Kushi (or similar
+;; tool).
+;;
+;; The POC below is an attempt at providing functionality that can be used
+;; inline to transform Kushi-generated CSS with lightningcss. This means the
+;; benefits of lightningcss can be leveraged ala-carte, without incorporating
+;; extra tooling via a build process. One use for this would be generating
+;; CSS on the server. Another use case would be generating CSS in JVM clojure or
+;; babashka in the context of build systems that currently use a tool such as
+;; garden (https://github.com/noprompt/garden).
+
+;; See example usage in docstring of lightning.
+;; Docs on lightningcss: https://lightningcss.dev/
 ;; -----------------------------------------------------------------------------
+
 (def lightning-opts
   {:browserslist               true
    :bundle                     nil
@@ -978,43 +1023,84 @@
    })
 
 
-(defn lightning [css-str opts]
-  (let [flags (some->> opts
-                       (keep (fn [[flag v]] 
-                               (when v 
-                                 [(str "--" (name flag))
-                                  (when-not (true? v) v)])))
-                       (apply concat)
-                       (remove nil?)
-                       (into [{:in css-str :out :string}
-                              "npx"
-                              "lightningcss"]))]
+(defn lightning
+  "Transforms a string of CSS using lightningcss. An (optional) user config map
+   is merged with kushi-css.core/lightning-opts, which is transformed into a
+   list of flags that are fed to lightningcss.
+   
+   Assumes that the user has installed lightningcss-cli locally or globally via
+   npm. Uses babaska.process/shell to shell out to lightningcss-cli via JVM
+   clojure.
 
-    (or (try (:out (apply shell flags))
-             (catch Exception e
-               (let [body (bling "Error when shelling out to lightningcss."
-                                 "\n\n"
-                                 [:italic.subtle.bold "CSS:"]
-                                 "\n"
-                                 css-str
-                                 "\n\n"
-                                 [:italic.subtle.bold
-                                  "Flags passed to lightningcss:\n"]
-                                 (with-out-str (fireworks.core/pprint flags))
-                                 "\n\n"
-                                 [:italic.subtle.bold
-                                  "The following css will be returned:\n"]
-                                 css-str)] 
-                 (callout
-                  (merge opts
-                         {:type        :error
-                          :label       (str "ERROR: "
-                                            (string/replace (type e)
-                                                            #"^class "
-                                                            "" )
-                                            " (Caught)")
-                          :padding-top 0})
-                  (point-of-interest
-                   (merge opts {:type :error
-                                :body body}))))))
-        css-str)))
+   Example:
+   ```Clojure
+   (ns your-ns.foo
+     (:require [kushi-css.core :refer [css-rule lightning]]))
+
+   (-> (css-rule \".bar\"
+                 :c--red
+                 :_.bar:c--green)
+       lightning)
+   ;; => \".foo{color:red}.foo .bar{color:green}\"
+   ```
+
+   Another example - same thing but overrides default minification:
+   ```Clojure
+   (-> (css-rule \".bar\"
+                 :c--red
+                 :_.bar:c--green)
+       (lightning {:minify false}))
+   ;; => 
+   \".foo {
+     color: red;
+   }
+
+   .foo .bar {
+     color: green;
+   }\"
+   ```"
+  ([css-str]
+   (lightning css-str nil))
+  ([css-str opts]
+   (let [flags (some->> (merge lightning-opts
+                               (when (or (nil? opts)
+                                         (map? opts))
+                                 opts))
+                        (keep (fn [[flag v]] 
+                                (when v 
+                                  [(str "--" (name flag))
+                                   (when-not (true? v) v)])))
+                        (apply concat)
+                        (remove nil?)
+                        (into [{:in css-str :out :string}
+                               "npx"
+                               "lightningcss"]))]
+
+     (or (try (:out (apply shell flags))
+              (catch Exception e
+                (let [body (bling "Error when shelling out to lightningcss."
+                                  "\n\n"
+                                  [:italic.subtle.bold "CSS:"]
+                                  "\n"
+                                  css-str
+                                  "\n\n"
+                                  [:italic.subtle.bold
+                                   "Flags passed to lightningcss:\n"]
+                                  (with-out-str (fireworks.core/pprint flags))
+                                  "\n\n"
+                                  [:italic.subtle.bold
+                                   "The following css will be returned:\n"]
+                                  css-str)] 
+                  (callout
+                   (merge opts
+                          {:type        :error
+                           :label       (str "ERROR: "
+                                             (string/replace (type e)
+                                                             #"^class "
+                                                             "" )
+                                             " (Caught)")
+                           :padding-top 0})
+                   (point-of-interest
+                    (merge opts {:type :error
+                                 :body body}))))))
+         css-str))))

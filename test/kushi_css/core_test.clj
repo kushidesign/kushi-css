@@ -1,7 +1,7 @@
 (ns kushi-css.core-test
   (:require [clojure.test :refer :all]
             [fireworks.core :refer [? !? ?> !?>]]
-            [lasertag.core :refer [tag-map]]
+            [bling.core :refer [bling callout]]
             [kushi-css.defs]
             [kushi-css.core :refer [css-block-data
                                     css-block
@@ -26,6 +26,15 @@
 ;; - test blue->red animation example
 ;; - test add-font-face example
 
+#_(?defcss "@font-face"
+  {:font-family "FiraCodeRegular"
+   :font-weight "400"
+   :font-style "normal"
+  ;;  :src "url(../fonts/FiraCode-Regular.woff)"
+   :src "local('Trickster'),
+         url('trickster-COLRv1.otf') format('opentype') tech(color-COLRv1),
+         url('trickster-outline.otf') format('opentype'),
+         url('trickster-outline.woff') format('woff')"})
 
 
 ;; -----------------------------------------------------------------------------
@@ -42,7 +51,6 @@
 
 ;; -----------------------------------------------------------------------------
 
-;; (? (tag-map "hi"))
 ;; (println (s/conform ::specs/sx-args 
 ;;                     '(:c--red
 ;;                       222
@@ -188,9 +196,6 @@
 ;;              (css-rule ".c" :c--red)
 ;;              ))
 
-(?defcss "p"
-  :c--blue
-  :bgc--red)
 
 ;; (?css :hover:c--blue
 ;;     :>a:hover:c--red
@@ -266,65 +271,22 @@
        :b   :1px:solid:black
        :p   :10px}})
 
+#_(? (-> (css-rule ".foo"
+                 :c--red
+                 :_.bar:c--green)
+       (lightning {:minify false})))
+
+
 ;; Fix tests
-#_(do 
-  ;; Figure out how to test these from a test namespace
-  #_(deftest css-macro 
-    (testing "tokenized keyword"
-      (is (= (css :p--10px) "")))
-    (testing "tokenized keywords"
-      (is (= (css :p--10px :c--red) "")))
-    (testing "tokenized keyword with classname"
-      (is (= (css :.foo :p--10px :c--red) "foo"))))
+(do 
 
-  (deftest css-block-macro
-    (testing "tokenized -> " 
-
-      (testing "keywords -> " 
-        (testing "2"
-          (is (= (css-block :c--red :bgc--blue)
-                 "{\n  color: red;\n  background-color: blue;\n}")))
-        (testing "with classname"
-          (is (= (css-block :.foo :c--red :bgc--blue)
-                 "{\n  color: red;\n  background-color: blue;\n}")))
-        (testing "with pseudoclasses"
-          (is (= (css-block :active:c--magenta
-                            :visited:c--orange
-                            :hover:c--red)
-"{
-  &:visited {
-    color: orange;
-  }
-  &:hover {
-    color: red;
-  }
-  &:active {
-    color: magenta;
-  }
-}")))
-        (testing "with pseudoclasses and nesting"
-          (is (= (css-block :active:c--magenta
-                            :visited:c--orange
-                            :hover:c--red
-                            :focus:c--pink
-                            :focus:bgc--blue)
-"{
-  &:visited {
-    color: orange;
-  }
-  &:focus {
-    color: pink;
-    background-color: blue;
-  }
-  &:hover {
-    color: red;
-  }
-  &:active {
-    color: magenta;
-  }
-}"))))
-
-      (testing "keyword -> "
+;; *****************************************************************************
+;; *****************************************************************************
+;; *****************************************************************************
+  
+  (deftest tokenized-keywords
+    (testing "tokenized keywords ->"
+      (testing "single -> "
         (testing "1"
           (is (= (css-block :c--red)
                  "{\n  color: red;\n}")))
@@ -347,8 +309,59 @@
 
         (testing "with alternation syntax and multiple properties syntax"
           (is (= (css-block :text-shadow--5px:5px:10px:red|-5px:-5px:10px:blue)
-                 "{\n  text-shadow: 5px 5px 10px red, -5px -5px 10px blue;\n}")))) 
+                 "{\n  text-shadow: 5px 5px 10px red, -5px -5px 10px blue;\n}"))))
       
+
+      (testing "multiple -> " 
+        (testing "2"
+          (is (= (css-block :c--red :bgc--blue)
+                 "{\n  color: red;\n  background-color: blue;\n}")))
+        (testing "with classname"
+          (is (= (css-block :.foo :c--red :bgc--blue)
+                 "{\n  color: red;\n  background-color: blue;\n}")))
+        (testing "with pseudoclasses"
+          (is (= (css-block :active:c--magenta
+                            :visited:c--orange
+                            :hover:c--red)
+                 "{
+  &:visited {
+    color: orange;
+  }
+  &:hover {
+    color: red;
+  }
+  &:active {
+    color: magenta;
+  }
+}")))
+        (testing "with pseudoclasses and nesting"
+          (is (= (css-block :active:c--magenta
+                            :visited:c--orange
+                            :hover:c--red
+                            :focus:c--pink
+                            :focus:bgc--blue)
+                 "{
+  &:visited {
+    color: orange;
+  }
+  &:focus {
+    color: pink;
+    background-color: blue;
+  }
+  &:hover {
+    color: red;
+  }
+  &:active {
+    color: magenta;
+  }
+}"))))))
+
+;; *****************************************************************************
+;; *****************************************************************************
+;; *****************************************************************************
+  
+  (deftest tokenized-strings
+    (testing "tokenized strings -> " 
       (testing "strings -> " 
         (testing "2"
           (is (= (css-block "c--red" "bgc--blue")
@@ -381,10 +394,16 @@
 
         (testing "with alternation syntax and multiple properties syntax"
           (is (= (css-block "text-shadow--5px:5px:10px:red|-5px:-5px:10px:blue")
-                 "{\n  text-shadow: 5px 5px 10px red, -5px -5px 10px blue;\n}")))))
-    
+                 "{\n  text-shadow: 5px 5px 10px red, -5px -5px 10px blue;\n}"))))))
 
-    (testing "map ->"
+
+;; *****************************************************************************
+;; *****************************************************************************
+;; *****************************************************************************
+  
+
+  (deftest map-args
+    (testing "map args ->"
       (testing "1 entry"
         (is (= (css-block {:c :red})
                "{\n  color: red;\n}")))
@@ -397,7 +416,7 @@
       
       (testing "1 entry, with css calc"
         (is (= (css-block {:w "calc((100vh - (var(--navbar-height) * (2 + (6 / 2)))) * 1)"})
-"{
+               "{
   width: calc((100vh - (var(--navbar-height) * (2 + (6 / 2)))) * 1);
 }")))
 
@@ -416,7 +435,7 @@
         (testing "1 entries, grouped"
           (is (= (css-block {:>p:c :red}
                             {:>p:bgc :blue})
-"{
+                 "{
   &>p {
     color: red;
     background-color: blue;
@@ -426,15 +445,15 @@
       (testing "with psdeudoelement ->"
         (testing "1 entry"
           (is (= (css-block {:before:content "\"⌫\"" })
-"{
+                 "{
   &::before {
     content: \"⌫\";
   }
 }")))
         (testing "2 entries"
           (is (= (css-block {:before:content "\"⌫\""
-                             :after:content "\"⌫\""})
-"{
+                             :after:content  "\"⌫\""})
+                 "{
   &::before {
     content: \"⌫\";
   }
@@ -449,7 +468,7 @@
         (testing "1 entries, grouped"
           (is (= (css-block {:>p:c :red}
                             {:>p:bgc :blue})
-"{
+                 "{
   &>p {
     color: red;
     background-color: blue;
@@ -457,13 +476,13 @@
 }"))))
       (testing "with compound data attribute selectors ->"
         (testing "1 entry, with nesting"
-          (is (= (css-block {"[data-foo-bar-sidenav][aria-expanded=\"true\"]" 
+          (is (= (css-block {"[data-foo-bar-sidenav][aria-expanded=\"true\"]"
                              {:>.sidenav-menu-icon:d  :none
                               :>.sidenav-close-icon:d :inline-flex
                               :>ul:h                  "calc((100vh - (var(--navbar-height) * 2)) * 1)"
                               :h                      :fit-content
                               :o                      1} })
-"{
+                 "{
   &[data-foo-bar-sidenav][aria-expanded=\"true\"] {
     &>.sidenav-menu-icon {
       display: none;
@@ -479,13 +498,13 @@
   }
 }")))
         (testing "1 entry, with nesting, ancestor selector"
-          (is (= (css-block {"[data-foo-bar-sidenav][aria-expanded=\"true\"] &" 
+          (is (= (css-block {"[data-foo-bar-sidenav][aria-expanded=\"true\"] &"
                              {:>.sidenav-menu-icon:d  :none
                               :>.sidenav-close-icon:d :inline-flex
                               :>ul:h                  "calc((100vh - (var(--navbar-height) * 2)) * 1)"
                               :h                      :fit-content
                               :o                      1} })
-"{
+                 "{
   [data-foo-bar-sidenav][aria-expanded=\"true\"] & {
     &>.sidenav-menu-icon {
       display: none;
@@ -499,12 +518,18 @@
     height: fit-content;
     opacity: 1;
   }
-}")))))
+}"))))))
 
+;; *****************************************************************************
+;; *****************************************************************************
+;; *****************************************************************************
+  
+  (deftest vector-args
     (testing "vector ->"
       (testing "1 entry"
         (is (= (css-block [:c :red])
                "{\n  color: red;\n}")))
+
 
       (testing "2 entries"
         (is (= (css-block [:c   :red] [:mie :1rem])
@@ -513,18 +538,21 @@
       
       (testing "1 entry, with css calc"
         (is (= (css-block [:w "calc((100vh - (var(--navbar-height) * (2 + (6 / 2)))) * 1)"])
-"{
+               "{
   width: calc((100vh - (var(--navbar-height) * (2 + (6 / 2)))) * 1);
 }")))
 
+
       (testing "with psdeudoclass ->"
+
         (testing "1 entry"
           (is (= (css-block [:last-child:c :red])
                  "{\n  &:last-child {\n    color: red;\n  }\n}")))
+
         (testing "2 entry"
           (is (= (css-block [:last-child:c  :red]
                             [:first-child:c :blue])
-"{
+                 "{
   &:last-child {
     color: red;
   }
@@ -532,6 +560,7 @@
     color: blue;
   }
 }")))
+
         (testing "1 entry, nested"
           (is (= (css-block [:last-child {:c   :red
                                           :bgc :blue}])
@@ -539,9 +568,9 @@
         
         (testing "1 entry, double nesting"
           (is (= (css-block [:hover {:bgc :blue
-                                        :>p  {:c   :teal
-                                              :bgc :gray}}])
-"{
+                                     :>p  {:c   :teal
+                                           :bgc :gray}}])
+                 "{
   &:hover {
     background-color: blue;
     &>p {
@@ -549,16 +578,15 @@
       background-color: gray;
     }
   }
-}"
-                 
-                 )))
+}")))
         
+
         (testing "2 entries, double nesting and grouping"
           (is (= (css-block [:hover {:bgc :blue
                                      :>p  {:c   :teal
                                            :bgc :gray}}]
                             [:hover:c :yellow])
-"{
+                 "{
   &:hover {
     background-color: blue;
     &>p {
@@ -567,21 +595,172 @@
     }
     color: yellow;
   }
-}")))
+}")))) ))
 
-        ))
-    
 
-)
+;; *****************************************************************************
+;; *****************************************************************************
+;; *****************************************************************************
+  
 
   (deftest css-rule-macro
+
     (testing "tokenized keyword"
       (is (= (css-rule "p" :c--red)
              "p {\n  color: red;\n}")))
+
     (testing "tokenized keywords"
       (is (= (css-rule "p" :c--red :bgc--blue)
              "p {\n  color: red;\n  background-color: blue;\n}")))
+
     (testing "tokenized keyword with classname" 
       (is (= (css-rule "p" :.foo :c--red :bgc--blue)
-             "p {\n  color: red;\n  background-color: blue;\n}")))
-    ))
+             "p {\n  color: red;\n  background-color: blue;\n}"))) )
+
+
+
+;; *****************************************************************************
+;; *****************************************************************************
+;; *****************************************************************************
+  
+
+  (deftest at-rules
+    (testing "at-rules  ->"
+
+      ;; This test should print a warning to terminal
+      (testing "bad at-name"
+        (is (= (css-rule "font-face"
+                         {:font-family "Trickster"
+                          :src         "local(Trickster), url(\"trickster-COLRv1.otf\") format(\"opentype\") tech(color-COLRv1)"})
+               nil)))
+      
+      ;; This test should print a warning to terminal
+      (testing "bad at-keyframes anme"
+        (is (= (css-rule "@keyframes "
+                         [:from {:color :blue}]
+                         [:to {:color :red}])
+               nil)))
+
+      ;; This test should print a warning to terminal
+      (testing "bad at-keyframe arg"
+        (is (= (css-rule "@keyframes blue-to-red"
+                         [:froms {:color :blue}]
+                         [:to {:color :red}])
+               nil)))
+      
+
+      (testing "@font-face"
+        (is (= (css-rule "@font-face"
+                         {:font-family "Trickster"
+                          :src         "local(Trickster), url(\"trickster-COLRv1.otf\") format(\"opentype\") tech(color-COLRv1)"})
+               "@font-face {
+  font-family: Trickster;
+  src: local(Trickster), url(\"trickster-COLRv1.otf\") format(\"opentype\") tech(color-COLRv1);
+}")))
+
+
+      (testing "@keyframes with from to"
+        (is (= (css-rule "@keyframes blue-to-red"
+                         [:from {:color :blue}]
+                         [:to {:color :red}])
+               "@keyframes blue-to-red {
+  from {
+    color: blue;
+  }
+  to {
+    color: red;
+  }
+}")))
+      
+
+      (testing "@keyframes with percentages"
+        (is (= (css-rule "@keyframes yspinner"
+                         [:0% {:transform "rotateY(0deg)"}]
+                         [:100% {:transform "rotateY(360deg)"}])
+               "@keyframes yspinner {
+  0% {
+    transform: rotateY(0deg);
+  }
+  100% {
+    transform: rotateY(360deg);
+  }
+}")))
+
+
+      (testing "@supports with single nested css ruleset"
+        (is (= (css-rule "@supports not (color: oklch(50% .37 200))"
+                         (css-rule ".element" {:color :#0288D7}))
+               "@supports not (color: oklch(50% .37 200)) {
+  .element {
+    color: #0288D7;
+  }
+}")))
+      
+
+      (testing "@supports with two nested css rulesets"
+        (is (= (css-rule "@supports not (color: oklch(50% .37 200))"
+                         (css-rule ".element" {:color :#0288D7})
+                         (css-rule ".element2" {:color :#0288D0}))
+               "@supports not (color: oklch(50% .37 200)) {
+  .element {
+    color: #0288D7;
+  }
+  .element2 {
+    color: #0288D0;
+  }
+}")))))
+
+
+;; *****************************************************************************
+;; *****************************************************************************
+;; *****************************************************************************
+  
+
+  (deftest css-custom-properties
+    (testing "CSS custom properties ->"
+
+      ;; Subject to change
+      (testing "css-vars"
+        (is (= 
+             (let [my-var1 "blue"
+                   my-var2 "yellow"]
+               (css-vars my-var1 my-var2))
+             "--my-var1: blue;--my-var2: yellow;")))
+
+      ;; Subject to change
+      (testing "css-vars-map"
+        (is (= 
+             (let [my-var1 "blue"
+                   my-var2 "yellow"]
+               (css-vars-map my-var1 my-var2))
+             {"--my-var1" "blue" "--my-var2" "yellow"})))
+
+      ;; Subject to change
+      (testing "local bindings in css-block"
+        (is (= (css-block [:c "`my-var1`"] [:bgc "`my-var2`"])
+               "{
+  color: var(--_my-var1);
+  background-color: var(--_my-var2);
+}")))
+
+      (testing "css-vars in css-block"
+        (is (= (css-block :c--$my-var1 :bgc--$my-var2)
+               "{
+  color: var(--my-var1);
+  background-color: var(--my-var2);
+}")))
+      
+      
+      ))
+
+  (callout {:type :info
+            :label "[kushi-css.core-test]"
+            :padding-top 1}
+           (bling [:bold "NOTE:"] "\n"
+                  "The above tests should print several warning blocks.\n"
+                  "This is to be expected, as several tests are being\n"
+                  "run with a malformed calls to functions/macros, which\n"
+                  "return nil, but issue a user-facing warning about\n"
+                  "what went wrong."))
+
+  ) ;; end of `(do ...)`

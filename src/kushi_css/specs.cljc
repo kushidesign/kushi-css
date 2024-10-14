@@ -173,6 +173,10 @@
    string?
    #(re-find #"^@.+$" %)))
 
+(s/def ::keyframe-selector
+  (s/and 
+   string?
+   #(re-find #"^@keyframes [a-z]+.*$" %)))
 
 ;; ## Specs for css-values -----------------------------------------------------
 
