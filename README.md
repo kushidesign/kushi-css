@@ -4,6 +4,9 @@ This is an experimental sandbox repo intended for the early development of
 Kushi's new v1 css transpilation pipeline and build system. The code here will
 most likely be folded into the main kushi repo</a>.
 
+Note that this is a draft for future documentation. The official docs for the
+most recent version of Kushi can be found here [here](https://github.com/kushidesign/kushi).
+
 Check out
 <a target="_blank" href="https://github.com/kushidesign/kushi-css/blob/main/doc/towards-kushi-v1.md">this doc</a>
 for design and usage info around the set of public macros and fns being developed
