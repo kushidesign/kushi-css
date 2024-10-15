@@ -2,7 +2,7 @@
 
 This document is a work-in-progress draft detailing features and usage patterns for the new set of public functions and macros that will constitute Kushi's upcoming v1 API. These docs, after additional refinement, will  be incorporated back into the main kushi repo's readme, and eventually into a detailed docs section on the kushi.design project site.
 
-
+Thanks to <a target="_blank" href="https://www.clojuriststogether.org/">Clojurists Together</a> for their generous support of this work during the 2024 Q3 funding cycle.
 
 ## Table of Contents
 
