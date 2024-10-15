@@ -1,10 +1,17 @@
 # kushi-css
 
 This is an experimental sandbox repo intended for the early development of
-Kushi's new v1 css transpilation pipeline and build prodcast. The code here will
+Kushi's new v1 css transpilation pipeline and build system. The code here will
 most likely be folded into the <a href="https://github.com/kushidesign/kushi">
 kushi repo</a>.
 
+Check out
+[this doc](https://github.com/kushidesign/kushi-css/blob/main/doc/towards-kushi-v1.md)
+for design and usage info around the set of public macros and fns being developed
+in this repo.
+
+Thanks to [Clojurists Together](https://www.clojuriststogether.org/) for their
+generous support of this project during the 2024 Q3 funding cycle.
 
 ## License
 
