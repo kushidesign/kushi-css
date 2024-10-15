@@ -9,7 +9,7 @@ Check out
 for design and usage info around the set of public macros and fns being developed
 in this repo.
 
-Thanks to <a target="_blank" href="https://github.com/kushidesign/kushi-css/blob/main/doc/towards-kushi-v1.md">Clojurists Together</a> for their generous support of this project during the 2024 Q3 funding cycle.
+Thanks to <a target="_blank" href="https://www.clojuriststogether.org/">Clojurists Together</a> for their generous support of this project during the 2024 Q3 funding cycle.
 
 ## License
 
