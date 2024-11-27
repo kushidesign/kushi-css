@@ -4,9 +4,11 @@
             [fireworks.core :refer [? !? ?> !?>]]
             [bling.core :refer [bling callout]]
             [kushi-css.defs]
-            [kushi-css.core :refer [css-block-data
+            [kushi-css.core :refer [ansi-colorized-css-block
+                                    css-block-data
                                     css-block
                                     css-rule
+                                    css-rule*
                                     css
                                     ?css
                                     sx
@@ -22,6 +24,38 @@
             [clojure.walk :as walk]
             [taoensso.tufte :as tufte :refer [p profile]]
             [kushi-css.defs :as defs]))
+
+#_(? (css-block {" .foo:color" :red}))
+#_(? (css-rule "p" :c--red :bgc--blue))
+#_(? (css-rule "p" {:c :red :bgc :blue}))
+
+;; (? (css-rule* "p" (list {:c :red :bgc :blue}) nil nil))
+
+(def block
+  (css-block {:border-block-end           :$divisor
+              :dark:border-block-end      :$divisor-inverse
+              ;; :_.foo:c                    :red
+              ;; :dark:color                 :blue
+              :transition-property        :none
+              :transition-timing-function :$transition-timing-function
+              :transition-duration        :$transition-duration}))
+#_(println (ansi-colorized-css-block {:block block :sel ".wtf"}))
+
+(println (ansi-colorized-css-block {:block (css-block :active:c--magenta
+                                                      :visited:c--orange
+                                                      :hover:c--red)
+                                    :sel   ".wtf"}))
+
+"{
+  &:visited {
+    color: orange;
+  }
+  &:hover {
+    color: red;
+  }
+  &:active {
+    color: magenta;
+}"
 
 ;; Fix tests
 #_(do 
@@ -230,6 +264,8 @@
                               :o                      1} })
                  "{
   &[data-foo-bar-sidenav][aria-expanded=\"true\"] {
+    height: fit-content;
+    opacity: 1;
     &>.sidenav-menu-icon {
       display: none;
     }
@@ -239,8 +275,6 @@
     &>ul {
       height: calc((100vh - (var(--navbar-height) * 2)) * 1);
     }
-    height: fit-content;
-    opacity: 1;
   }
 }")))
         (testing "1 entry, with nesting, ancestor selector"
@@ -252,6 +286,8 @@
                               :o                      1} })
                  "{
   [data-foo-bar-sidenav][aria-expanded=\"true\"] & {
+    height: fit-content;
+    opacity: 1;
     &>.sidenav-menu-icon {
       display: none;
     }
@@ -261,8 +297,6 @@
     &>ul {
       height: calc((100vh - (var(--navbar-height) * 2)) * 1);
     }
-    height: fit-content;
-    opacity: 1;
   }
 }"))))))
 
@@ -335,11 +369,11 @@
                  "{
   &:hover {
     background-color: blue;
+    color: yellow;
     &>p {
       color: teal;
       background-color: gray;
     }
-    color: yellow;
   }
 }")))) ))
 
