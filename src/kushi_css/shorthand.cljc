@@ -101,6 +101,7 @@
                                        "o" "outset"}}
    "border-inline-start-width" {:tier 3}
    "border-inline-width"       {:tier 3}
+   "border-radius"             {:tier 1}
    "border-start-end-radius"   {:tier 3}
    "border-start-start-radius" {:tier 3}
    "border-style"              {:tier 2,
