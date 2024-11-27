@@ -391,30 +391,26 @@
              grouped))
 
 
+(defn- lvfha-order [coll all-nested-sels]
+  (if (some #(contains? defs/lvfha-pseudos-strs %) all-nested-sels)
+    (into []
+          (sort-by #(->> % 
+                         first
+                         (get defs/lvfha-pseudos-order-strs))
+                   coll))
+    coll))
+
+
 (defn group-shared*
   "Groups things for nesting.
    Postions css properties in front of other selector bits.
    Pseudo-classes are ordered according to defs/lvfha-pseudos-order."
   ;; TODO - make pseudo-ordering override-able.
-  [v maybe-dupes]
-  (let [all-sels
-        (map first maybe-dupes)
-            
-        ;; Determine if there are selectors with lvfha pseudoclasses
-        some-lvfha?
-        (some #(contains? defs/lvfha-pseudos-strs %) all-sels)
-
-        dupe-sels
-        (->> all-sels
-             frequencies
-             (keep (fn [[sel n]] (when (> n 1) sel)))
-             (into #{}))
-
+  [v all-nested-sels dupe-nested-sels]
+  (let [
         ;; If there are any duplicate selectors, partition them from others
         [dupe-vecs others]
-        (if (seq dupe-sels)
-          (partition-by-pred #(contains? dupe-sels (nth % 0 nil)) v)
-          [[] v])
+        (partition-by-pred #(contains? dupe-nested-sels (nth % 0 nil)) v)
 
         ;; Potentially group and reduce duplicates
         grouped-dupes
@@ -423,36 +419,44 @@
         ;; Create new vec-of-vecs with non-dupes and grouped dupes
         ret*
         (!? 'ret* (apply conj others grouped-dupes))
-            
-        ;; Optionally sort the new vec-of-vecs, based on whether there were any
-        ;; lvfha pseudoclasses
-        ret
-        (if some-lvfha?
-          (into []
-                (sort-by #(->> % 
-                               first
-                               (get defs/lvfha-pseudos-order-strs))
-                         ret*))
-          ret*)]
+        
+        ;; Determine if there are selectors with lvfha pseudoclasses
+        ;; Optionally resort based on selectors with lvfha pseudoclasses
+        ret (lvfha-order ret* all-nested-sels)]
 
-#_(!? (keyed [all-sels
-           some-lvfha?
-           dupe-sels
-           dupe-vecs
-           others
-           grouped-dupes
-           ret*
- ret]))
-
+   #_(? (keyed [dupe-nested-sels
+              dupe-vecs
+              others
+              grouped-dupes
+              some-lvfha?
+              ret*
+              ret]))
         ret))
+
+
+(defn- order-nested-rules
+  [v all-nested-sels nested-rules]
+  (let [all-nested-sels (into #{} all-nested-sels)
+        non-nested      (filter #(not (contains? all-nested-sels
+                                                 (nth % 0 nil)))
+                                v)
+        ret*            (into [] (concat non-nested nested-rules))]
+    (lvfha-order ret* all-nested-sels)))
 
 
 (defn group-shared
   [v]
-  (if-let [dupes* (seq (filter sel-and-vec-of-vecs?2 v))]
-    (if (more-than-one? dupes*)
-      (group-shared* v dupes*)
-      v)
+  (if-let [nested-rules (seq (filter sel-and-vec-of-vecs?2 v))]
+    (let [all-nested-sels  (map first nested-rules)]
+      (if (more-than-one? nested-rules)
+        (let [dupe-nested-sels (->> all-nested-sels
+                                    frequencies
+                                    (keep (fn [[sel n]] (when (> n 1) sel)))
+                                    (into #{}))]
+          (if (seq dupe-nested-sels)
+            (group-shared* v all-nested-sels dupe-nested-sels)
+            (order-nested-rules v all-nested-sels nested-rules)))
+        (order-nested-rules v all-nested-sels nested-rules)))
     v))
 
 
@@ -595,7 +599,8 @@
                  (!? 'vectorized)
                  hydrated/hydrated-stacks
                  (!? 'hydrated)
-                 (prewalk group-shared)))]
+                 (prewalk group-shared)
+                 (!? 'grouped)))]
 
     {:css-block     (str "{\n" (css-block-str grouped) "}")
      :nested-vector grouped
@@ -787,7 +792,7 @@
                     "kushi-css.core/css-block"))
 
 
-(defn- css-rule* [sel args &form &env]
+(defn css-rule* [sel args &form &env]
   ;; Check if user supplied bad at-rule name, forgetting a leading "@".
   (if (bad-at-rule-name? sel)
 
@@ -800,7 +805,7 @@
                (str sel " "
                     (nested-css-block args &form &env "kushi-css.core/at-rule")))]
        (cond
-        ;; @ keyframes --------------------------
+         ;; @ keyframes --------------------------
          (string/starts-with? sel "@keyframes")
          (if-not (s/valid? ::specs/keyframe-selector sel)
            (bad-at-keyframes-name-warning sel &form)
@@ -811,28 +816,29 @@
                               (f (name nested-sel) [m]))]
                  (double-nested-rule sel blocks)))))
          
-        ;; CSS at-rule with nested css rules ----
-        ;; TODO
-        ;;  - created ::nested-css-rule spec
-        ;;  - then use partition-by-spec to remove bad ones and warn
+         ;; CSS at-rule with nested css rules ----
+         ;; TODO
+         ;;  - created ::nested-css-rule spec
+         ;;  - then use partition-by-spec to remove bad ones and warn
          (every? #(and (list? %) (= (first %) 'css-rule)) args)
          (let [blocks (for [[_ nested-sel & style-args] args]
                         (f nested-sel style-args))]
            (double-nested-rule sel blocks))
          
-        ;; @ CSS rule with no nested rules ------
+         ;; @ CSS rule with no nested rules ------
          :else
          (f sel args)))
 
     ;; Normal css-rule -------------------------------------------
      (if-not (s/valid? ::specs/css-selector sel)
        (rule-selector-warning sel &form)
-       (str sel
-            " "
-            (nested-css-block args
-                              &form
-                              &env
-                              "kushi-css.core/css-rule"))))))
+       (do 
+         (str sel
+              " "
+              (nested-css-block args
+                                &form
+                                &env
+                                "kushi-css.core/css-rule")))))))
 
 
 (defmacro ^:public css-rule
