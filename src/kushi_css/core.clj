@@ -676,11 +676,12 @@
       (str ")")))
 
 
-(defn- ansi-colorized-css-block
-  [{:keys [args &form &env block display-selector?] :as m}]
+(defn ansi-colorized-css-block
+  [{:keys [args &form &env block display-selector? sel] :as m}]
   (let [sel   (when (or (not block)
                         display-selector?)
-                (bling [:blue (str "." (loc-id &env &form) " ")]))
+                (bling [:blue (or (some-> sel (str " "))
+                                  (str "." (loc-id &env &form) " "))]))
         block (or block
                   (nested-css-block args
                                     &form
@@ -693,6 +694,7 @@
                   (sr #"(\&[^ ]+) \{" blue)
                   (sr #"(.+): " #(bling [:magenta (second %)] [:gray ": "])))]
     (str sel block)))
+
 
 (defn- print-css-block [{:keys [sym] :as m}]
   (println 
