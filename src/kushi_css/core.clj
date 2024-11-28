@@ -253,7 +253,6 @@
     [(:valid ret*) (:invalid ret*)]))
 
 
-
 ;; FFFFFFFFFFFFFFFFFFFFFFLLLLLLLLLLL       TTTTTTTTTTTTTTTTTTTTTTT
 ;; F::::::::::::::::::::FL:::::::::L       T:::::::::::::::::::::T
 ;; F::::::::::::::::::::FL:::::::::L       T:::::::::::::::::::::T
@@ -273,6 +272,7 @@
 ;; -----------------------------------------------------------------------------
 ;; Flattening / Vectorizing
 ;; -----------------------------------------------------------------------------
+
 
 (defn split-on [re v]
   (string/split (name v) re))
@@ -632,9 +632,9 @@
     (keyed [conformed-args invalid-args])))
 
 
-(defn- nested-css-block
+(defn nested-css-block
   "Returns a potentially nested block of css"
-  [args &form &env fname]
+  [args &form &env fname sel]
   (let [{:keys [conformed-args
                 invalid-args]}
         (conformed-args args)
@@ -650,10 +650,11 @@
        {:fname             fname
         :args              args
         :invalid-args      invalid-args
-        :&form              &form
-        :&env               &env
+        :&form             &form
+        :&env              &env
         :block             ret
-        :display-selector? true}))
+        :display-selector? true
+        :sel               sel}))
     ret))
 
 
@@ -691,7 +692,8 @@
                   (nested-css-block args
                                     &form
                                     &env
-                                    "kushi-css.core/css-block"))
+                                    "kushi-css.core/css-block"
+                                    sel))
         blue  #(bling [:blue (second %)] " {")
         block (-> block 
                   (sr #";" #(bling [:gray %]))
@@ -789,7 +791,8 @@
   (nested-css-block args
                     &form
                     &env
-                    "kushi-css.core/css-block"))
+                    "kushi-css.core/css-block"
+                    nil))
 
 
 (defn css-rule* [sel args &form &env]
@@ -803,7 +806,7 @@
      ;; CSS at-rule -----------------------------------------------
      (let [f (fn [sel args]
                (str sel " "
-                    (nested-css-block args &form &env "kushi-css.core/at-rule")))]
+                    (nested-css-block args &form &env "kushi-css.core/at-rule" sel)))]
        (cond
          ;; @ keyframes --------------------------
          (string/starts-with? sel "@keyframes")
@@ -838,7 +841,8 @@
               (nested-css-block args
                                 &form
                                 &env
-                                "kushi-css.core/css-rule")))))))
+                                "kushi-css.core/css-rule"
+                                sel)))))))
 
 
 (defmacro ^:public css-rule
