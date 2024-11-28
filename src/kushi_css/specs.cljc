@@ -39,7 +39,7 @@
   " 0-9a-z_\\-\\+\\>\\~\\*\\.\\$\\@")
 
 (def css-selector-first-char-allowables
-  "\\.\\[\\*\\#a-z")
+  "\\.\\[\\*\\#a-z\\:")
 
 
 (def css-prop-stack-allowables
