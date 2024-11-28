@@ -90,7 +90,7 @@
   (let [[sym] form]
     (generic-warning 
      {:form   form
-      :header (bling "Bad " sym " selector:\n"
+      :header (bling "Bad" (some->> sym (str " ")) " selector:\n"
                      [:bold sel])
       :body   (if (and (string? sel)
                        (string/starts-with? sel "@keyframes"))
