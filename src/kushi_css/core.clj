@@ -855,9 +855,8 @@
 (defmacro ^:public defcss
   "Used to define shared css rulesets.
    `sel` must be a valid css selector in the form of a string.
-   `args` must be valid style args, same as `css` and `sx`.
-   The function call will be picked up in the analyzation phase of a build, then
-   fed to `css-rule` to produce a css rule that will be written to disk.
+   `args` must be valid style args, same as the `css` and `sx` macros.
+   The function call will be picked up in the analyzation phase of a build, then fed to `css-rule` to produce a css rule that will be written to disk.
    Expands to nil."
   [sel & args]
   nil)
