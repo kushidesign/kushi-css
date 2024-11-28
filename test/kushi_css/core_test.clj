@@ -33,7 +33,9 @@
               nil))
 
 #_(? (css-block {" .foo:color" :red}))
-(? (css-rule ".foo" :.bang :c--red :bgc--blue))
+
+(? (css-rule ".foo" {:c "blue"} :c--red))
+
 #_(? (css-rule "p" {:c :red :bgc :blue}))
 ;; (? (css-rule* "p" (list {:c :red :bgc :blue}) nil nil))
 
@@ -67,7 +69,7 @@
                      ))
               nil nil))
 
-(def block
+#_(def block
   (css-block {:border-block-end           :$divisor
               :dark:border-block-end      :$divisor-inverse
               ;; :_.foo:c                    :red
