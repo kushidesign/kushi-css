@@ -327,12 +327,13 @@
         untokenized          (->> conformed-map 
                                   :tokenized
                                   (map (partial split-on #"--")))
-
         top-level-maps->vecs (top-level-maps->vecs conformed-map)
         top-level-vecs->vecs (top-level-vecs->vecs conformed-map)
-        list-of-vecs         (concat untokenized
+        ;; TODO - how do you sort here based on original order?
+        ;; Maybe attach meta to vecs and do it by that?
+        list-of-vecs         (concat top-level-maps->vecs
                                      top-level-vecs->vecs
-                                     top-level-maps->vecs)
+                                     untokenized)
         vectorized           (unpack-pvs list-of-vecs)]
 
     (!? (keyed [coll
