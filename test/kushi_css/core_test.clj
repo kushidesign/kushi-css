@@ -7,6 +7,7 @@
             [kushi-css.core :refer [ansi-colorized-css-block
                                     css-block-data
                                     css-block
+                                    nested-css-block
                                     css-rule
                                     css-rule*
                                     css
@@ -25,11 +26,46 @@
             [taoensso.tufte :as tufte :refer [p profile]]
             [kushi-css.defs :as defs]))
 
-#_(? (css-block {" .foo:color" :red}))
-#_(? (css-rule "p" :c--red :bgc--blue))
-#_(? (css-rule "p" {:c :red :bgc :blue}))
+#_(? (css-rule* ".foo"
+              [:p-3]
+              (with-meta (list 'css :p-3)
+                {:file "wtf.cljs" :line 20 :column 12})
+              nil))
 
+#_(? (css-block {" .foo:color" :red}))
+(? (css-rule ".foo" :.bang :c--red :bgc--blue))
+#_(? (css-rule "p" {:c :red :bgc :blue}))
 ;; (? (css-rule* "p" (list {:c :red :bgc :blue}) nil nil))
+
+#_(do (def release? true #_false)
+    (def all-tokens [:--foreground-color         :$neutral-950
+                     :--foreground-color-inverse :$neutral-50
+                     :--background-color         :white
+                     :--background-color-inverse :$neutral-1000
+                     ])
+    (def bs {:all-design-tokens all-tokens})
+
+    (defn design-tokens-css [req {:keys [all-design-tokens]}]
+      (let [tokens (if release?
+                     (->> all-design-tokens
+                          (partition 2)
+                          (filter (fn [[k _]] (contains? req k)))
+                          (apply concat)
+                          (apply array-map))
+                     (apply array-map all-design-tokens))]
+        (css-rule* ":root" (list tokens) nil nil)))
+
+    (? (design-tokens-css #{:--foreground-color :--background-color} bs)))
+
+#_(? (css-rule* ":root"
+              (list (array-map
+                     :--foreground-color         :$neutral-950
+                     :--foreground-color-inverse :$neutral-50
+
+                     :--background-color         :white
+                     :--background-color-inverse :$neutral-1000
+                     ))
+              nil nil))
 
 (def block
   (css-block {:border-block-end           :$divisor
@@ -39,23 +75,24 @@
               :transition-property        :none
               :transition-timing-function :$transition-timing-function
               :transition-duration        :$transition-duration}))
+
 #_(println (ansi-colorized-css-block {:block block :sel ".wtf"}))
 
-(println (ansi-colorized-css-block {:block (css-block :active:c--magenta
-                                                      :visited:c--orange
-                                                      :hover:c--red)
-                                    :sel   ".wtf"}))
+#_(println (ansi-colorized-css-block
+          {:block (nested-css-block 
+                   (list (apply array-map
+                                :$foreground-color :$neutral-950
+                                :$foreground-color-inverse :$neutral-50
 
-"{
-  &:visited {
-    color: orange;
-  }
-  &:hover {
-    color: red;
-  }
-  &:active {
-    color: magenta;
-}"
+                                :$background-color :white
+                                :$background-color-inverse :$neutral-1000)
+                         nil
+                         nil
+                         'myfun
+                         nil)
+                   )
+           :sel   ".wtf"}))
+
 
 ;; Fix tests
 #_(do 
